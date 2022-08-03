@@ -1,0 +1,43 @@
+# dobal 이라는 ServiceAccount 생성
+kubectl create sa dobal
+
+#서비스 목록을 dobal을 가장하여 가져오기
+kubectl get services --as system:serviceaccount:default:dobal
+
+# service read only role 생성, service-reader-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: service-reader
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+
+# Role 등록
+kubectl apply -f service-reader-role.yaml
+
+# ServiceAccount-Role Binding, service-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: service-reader-rolebinding
+  namespace: default
+subjects: 
+- kind: ServiceAccount
+  name: dobal
+  namespace: default
+roleRef: 
+  kind: Role
+  name: service-reader
+  apiGroup: rbac.authorization.k8s.io
+
+# Role-Binding 등록
+kubectl apply -f service-role-binding.yaml
+
+# dobal로 가장하여 서비스 목록 가져오기 
+kubectl get services --as system:serviceaccount:default:dobal
+
+#dobal로 가장하여 배포 목록 가져오기
+kubectl get demployment --as system:serviceaccount:default:dobal

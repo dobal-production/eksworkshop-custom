@@ -1,0 +1,49 @@
+cat << EOF > eksworkshop.yaml
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eksworkshop-eksctl
+  region: ${AWS_REGION}
+  version: "1.21"
+
+vpc:
+  id: "${VPC_ID}"  # (optional, must match VPC ID used for each subnet below)
+  cidr: "${VPC_CIDR}"       # (optional, must match CIDR used by the given VPC)
+  subnets:
+    # must provide 'private' and/or 'public' subnets by availibility zone as shown
+    private:
+      ap-northeast-2a:
+        id: "${SUBNET_IDS[0]}"
+        cidr: "${SUBNET_CIDRS[0]}" # (optional, must match CIDR used by the given subnet)
+
+      ap-northeast-2b:
+        id: "${SUBNET_IDS[1]}"
+        cidr: "${SUBNET_CIDRS[1]}"  # (optional, must match CIDR used by the given subnet)
+
+      ap-northeast-2c:
+        id: "${SUBNET_IDS[2]}"
+        cidr: "${SUBNET_CIDRS[2]}"   # (optional, must match CIDR used by the given subnet)
+      
+      ap-northeast-2d:
+        id: "${SUBNET_IDS[3]}"
+        cidr: "${SUBNET_CIDRS[3]}"   # (optional, must match CIDR used by the given subnet)
+
+# “Security group for pod“ 진행을 위해 m5.large로 생성
+managedNodeGroups:
+- name: nodegroup
+  desiredCapacity: 4
+  privateNetworking: true
+  instanceType: m5.large
+  ssh:
+    enableSsm: true
+
+# To enable all of the control plane logs, uncomment below:
+# cloudWatch:
+#  clusterLogging:
+#    enableTypes: ["*"]
+
+secretsEncryption:
+  keyARN: ${MASTER_ARN}
+EOF
