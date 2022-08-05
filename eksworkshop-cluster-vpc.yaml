@@ -301,6 +301,13 @@ Resources:
       InstanceType: m5.large
       Name: eksworkshop-instance
       SubnetId: !Ref WebSubnetA
+  EKSWorkerNodeKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties: 
+      KeyName: EKSWorkerNodeKeyPair
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName} nodegroup key pair
 Outputs:
   VPC:
     Description: A reference to the created VPC
@@ -352,3 +359,5 @@ Outputs:
     Value: !Ref Cloud9Instance
   Cloud9InstanceArn:
     Value: !GetAtt 'Cloud9Instance.Arn'
+  EKSWorkerNodeKeyPair:
+    Value: !Ref EKSWorkerNodeKeyPair
