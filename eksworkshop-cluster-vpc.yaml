@@ -9,6 +9,13 @@ Parameters:
     Description: An environment name that is prefixed to resource names
     Type: String
     Default: eksworkshop
+  ControlPlaneName:
+    Description: An eks cluster name
+    Type: String
+    Default: ekscluster-custom
+  EKSServiceRoleName:
+    Type: String
+    Default: EKSServiceRole
   VpcCIDR:
     Description: Please enter the IP range (CIDR notation) for this VPC
     Type: String
@@ -264,6 +271,43 @@ Resources:
       Roles: 
         - 
           !Ref Cloud9InstanceRole
+  Cloud9Instance:
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties:
+      AutomaticStopTimeMinutes: 1440
+      Description: Cloud9 Instance for eksworkshop
+      ImageId: amazonlinux-2-x86_64
+      InstanceType: m5.large
+      Name: eksworkshop-instance
+      SubnetId: !Ref WebSubnetA
+  EKSWorkerNodeKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties: 
+      KeyName: EKSWorkerNodeKeyPair
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName} nodegroup key pair
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref VPC
+  ControlPlaneRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      RoleName: !Ref EKSServiceRoleName
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
   SecretsEncryptionKey:
     Type: AWS::KMS::Key
     Properties: 
@@ -287,27 +331,31 @@ Resources:
       Tags: 
         - Key: Name
           Value: !Sub ${EnvironmentName} Key
-  CMKAlias:
+  SecretsEncryptionKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
       AliasName: alias/eksworkshop
       TargetKeyId: !Ref SecretsEncryptionKey
-  Cloud9Instance:
-    Type: AWS::Cloud9::EnvironmentEC2
+  ControlPlane:
+    Type: AWS::EKS::Cluster
     Properties:
-      AutomaticStopTimeMinutes: 1440
-      Description: Cloud9 Instance for eksworkshop
-      ImageId: amazonlinux-2-x86_64
-      InstanceType: m5.large
-      Name: eksworkshop-instance
-      SubnetId: !Ref WebSubnetA
-  EKSWorkerNodeKeyPair:
-    Type: AWS::EC2::KeyPair
-    Properties: 
-      KeyName: EKSWorkerNodeKeyPair
-      Tags: 
-        - Key: Name
-          Value: !Sub ${EnvironmentName} nodegroup key pair
+      Name: !Ref ControlPlaneName
+      RoleArn: 
+        !GetAtt "ControlPlaneRole.Arn"
+      EncryptionConfig:
+        - Provider: 
+            KeyArn: !GetAtt "SecretsEncryptionKey.Arn"
+          Resources: 
+          - secrets
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+        - !Ref ControlPlaneSecurityGroup
+        SubnetIds:
+        - !Ref WorkerNodeSubnetA
+        - !Ref WorkerNodeSubnetB
+        - !Ref WorkerNodeSubnetC
+        - !Ref WorkerNodeSubnetD
+    DependsOn: [VPC, WorkerNodeSubnetA, WorkerNodeSubnetB, WorkerNodeSubnetC, WorkerNodeSubnetD, ControlPlaneRole, ControlPlaneSecurityGroup, SecretsEncryptionKey, SecretsEncryptionKeyAlias]
 Outputs:
   VPC:
     Description: A reference to the created VPC
@@ -361,3 +409,6 @@ Outputs:
     Value: !GetAtt 'Cloud9Instance.Arn'
   EKSWorkerNodeKeyPair:
     Value: !Ref EKSWorkerNodeKeyPair
+  SecurityGroups:
+    Description: Security group for the cluster control plane communication with worker nodes
+    Value: !Join [ ",", [ !Ref ControlPlaneSecurityGroup ] ]
