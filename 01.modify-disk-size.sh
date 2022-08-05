@@ -1,4 +1,6 @@
 #!/bin/bash
+SIZE=${1:-40}
+
 # Increase the disk size on the Cloud9 instance
 pip3 install --user --upgrade boto3
 export instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
@@ -20,7 +22,7 @@ volume_id = volume_info['Volumes'][0]['VolumeId']
 try:
     resize = ec2.modify_volume(    
             VolumeId=volume_id,    
-            Size=40
+            Size=$SIZE
     )
     print(resize)
 except ClientError as e:
