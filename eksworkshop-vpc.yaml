@@ -9,6 +9,10 @@ Parameters:
     Description: An environment name that is prefixed to resource names
     Type: String
     Default: eksworkshop
+  ClusterName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: eksworkshop-eksctl
   VpcCIDR:
     Description: Please enter the IP range (CIDR notation) for this VPC
     Type: String
@@ -37,6 +41,9 @@ Parameters:
     Description: Please enter the IP range (CIDR notation) for eks worker node zone-d in the second Availability Zone
     Type: String
     Default: 10.22.2.48/28
+  WorkerNodeSubnetTag:
+    Type: String
+    Default: WorkerNodeSubnet
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -87,7 +94,13 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ1)
+          Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ1)
+        - Key: SubnetGroup
+          Value: !Ref WorkerNodeSubnet
+        - Key: kubernetes.io/role/elb
+          Value: 1
+        - Key: alpha.eksctl.io/cluster-name
+          Value: !Ref ClusterName
   WorkerNodeSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
@@ -97,7 +110,13 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ2)
+          Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ2)
+        - Key: SubnetGroup
+          Value: !Ref WorkerNodeSubnet
+        - Key: kubernetes.io/role/elb
+          Value: 1
+        - Key: alpha.eksctl.io/cluster-name
+          Value: !Ref ClusterName
   WorkerNodeSubnetC:
     Type: AWS::EC2::Subnet
     Properties:
@@ -107,7 +126,13 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ3)
+          Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ3)
+        - Key: SubnetGroup
+          Value: !Ref WorkerNodeSubnet
+        - Key: kubernetes.io/role/elb
+          Value: 1
+        - Key: alpha.eksctl.io/cluster-name
+          Value: !Ref ClusterName
   WorkerNodeSubnetD:
     Type: AWS::EC2::Subnet
     Properties:
@@ -117,7 +142,13 @@ Resources:
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ4)
+          Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ4)
+        - Key: SubnetGroup
+          Value: !Ref WorkerNodeSubnet
+        - Key: kubernetes.io/role/elb
+          Value: 1
+        - Key: alpha.eksctl.io/cluster-name
+          Value: !Ref ClusterName
   NatGatewayAEIP:
     Type: AWS::EC2::EIP
     DependsOn: InternetGatewayAttachment
@@ -168,7 +199,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Routes (AZ1)
+          Value: !Sub ${ClusterName} Cluster Worker Node Routes (AZ1)
   WorkerNodeSubnetARoute:
     Type: AWS::EC2::Route
     Properties:
@@ -186,7 +217,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Routes (AZ2)
+          Value: !Sub ${ClusterName} Cluster Worker Node Routes (AZ2)
   WorkerNodeSubnetBRoute:
     Type: AWS::EC2::Route
     Properties:
@@ -204,7 +235,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Routes (AZ3)
+          Value: !Sub ${ClusterName} Cluster Worker Node Routes (AZ3)
   WorkerNodeSubnetCRoute:
     Type: AWS::EC2::Route
     Properties:
@@ -222,7 +253,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${EnvironmentName} EKS Worker Node Routes (AZ4)
+          Value: !Sub ${ClusterName} Cluster Worker Node Routes (AZ4)
   WorkerNodeSubnetDRoute:
     Type: AWS::EC2::Route
     Properties:
