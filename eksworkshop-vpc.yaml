@@ -96,11 +96,13 @@ Resources:
         - Key: Name
           Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ1)
         - Key: SubnetGroup
-          Value: !Ref WorkerNodeSubnet
+          Value: !Ref WorkerNodeSubnetTag
         - Key: kubernetes.io/role/elb
           Value: 1
         - Key: alpha.eksctl.io/cluster-name
           Value: !Ref ClusterName
+        - Key: alpha.eksctl.io/cluster-oidc-enabled
+          Value: false
   WorkerNodeSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
@@ -112,11 +114,13 @@ Resources:
         - Key: Name
           Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ2)
         - Key: SubnetGroup
-          Value: !Ref WorkerNodeSubnet
+          Value: !Ref WorkerNodeSubnetTag
         - Key: kubernetes.io/role/elb
           Value: 1
         - Key: alpha.eksctl.io/cluster-name
           Value: !Ref ClusterName
+        - Key: alpha.eksctl.io/cluster-oidc-enabled
+          Value: false
   WorkerNodeSubnetC:
     Type: AWS::EC2::Subnet
     Properties:
@@ -128,11 +132,13 @@ Resources:
         - Key: Name
           Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ3)
         - Key: SubnetGroup
-          Value: !Ref WorkerNodeSubnet
+          Value: !Ref WorkerNodeSubnetTag
         - Key: kubernetes.io/role/elb
           Value: 1
         - Key: alpha.eksctl.io/cluster-name
           Value: !Ref ClusterName
+        - Key: alpha.eksctl.io/cluster-oidc-enabled
+          Value: false
   WorkerNodeSubnetD:
     Type: AWS::EC2::Subnet
     Properties:
@@ -144,11 +150,13 @@ Resources:
         - Key: Name
           Value: !Sub ${ClusterName} Cluster Worker Node Subnet (AZ4)
         - Key: SubnetGroup
-          Value: !Ref WorkerNodeSubnet
+          Value: !Ref WorkerNodeSubnetTag
         - Key: kubernetes.io/role/elb
           Value: 1
         - Key: alpha.eksctl.io/cluster-name
           Value: !Ref ClusterName
+        - Key: alpha.eksctl.io/cluster-oidc-enabled
+          Value: false
   NatGatewayAEIP:
     Type: AWS::EC2::EIP
     DependsOn: InternetGatewayAttachment

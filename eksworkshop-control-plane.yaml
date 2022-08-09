@@ -6,33 +6,33 @@ Parameters:
     Description: An environment name that is prefixed to resource names
     Type: String
     Default: eksworkshop
-  ControlPlaneName:
+  ClusterName:
     Description: An eks cluster name
     Type: String
-    Default: ekscluster-custom
+    Default: eksworkshop-eksctl
   ControlPlaneRoleName:
     Type: String
     Default: ControlPlaneRole
   VPC:
     Description: VPC ID for eks cluster
     Type: String
-    Default: vpc-08b124a312770499f
+    Default: vpc-0f4bf5515382b1ea6
   WorkerNodeSubnetA:
     Type: String
     Description: Subnets for worker nodes
-    Default: subnet-03cf87702a2a49d1b
+    Default: subnet-0d78c115d3ed3f973
   WorkerNodeSubnetB:
     Type: String
     Description: Subnets for worker nodes
-    Default: subnet-0f23791acf631d95c
+    Default: subnet-0e11cdd46ff1175b8
   WorkerNodeSubnetC:
     Type: String
     Description: Subnets for worker nodes
-    Default: subnet-01df0f929b8f0527a
+    Default: subnet-0cd0103b186bfcf71
   WorkerNodeSubnetD:
     Type: String
     Description: Subnets for worker nodes
-    Default: subnet-0267bead1b95fb2a8
+    Default: subnet-048988bc91b957f14
 Resources:
   # Control Plane
   ControlPlaneSecurityGroup:
@@ -55,7 +55,51 @@ Resources:
       RoleName: !Ref ControlPlaneRoleName
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
-        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        # - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ 'eksctl', !Ref ClusterName, 'cluster/ServiceRole' ]]
+        - Key: alpha.eksctl.io/cluster-name
+          Value: !Ref ClusterName
+        - Key: alpha.eksctl.io/cluster-oidc-enabled
+          Value: false
+        - Key: eksctl.cluster.k8s.io/v1alpha1/cluster-name
+          Value: !Ref ClusterName
+        # - Key: alpha.eksctl.io/eksctl-version
+        #  Value: 0.107.0
+  ControlPlaneCloudWatchMetricsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to ControlPlane Role
+      ManagedPolicyName: !Join [ "-", [ 'eksctl', !Ref ClusterName, 'cluster', 'PolicyCloudWatchMetrics' ]]
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+            Resource: '*'
+      Roles: 
+        - !Ref ControlPlaneRole
+  ControlPlaneELBPermissionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to ControlPlane Role
+      ManagedPolicyName: !Join [ "-", [ 'eksctl', !Ref ClusterName, 'cluster', 'ELBPermissions' ]]
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:DescribeAccountAttributes'
+              - 'ec2:DescribeAddresses'
+              - 'ec2:DescribeInternetGateways'
+            Resource: '*'
+      Roles: 
+        - !Ref ControlPlaneRole
   SecretsEncryptionKey:
     Type: AWS::KMS::Key
     Properties: 
@@ -87,7 +131,7 @@ Resources:
   ControlPlane:
     Type: AWS::EKS::Cluster
     Properties:
-      Name: !Ref ControlPlaneName
+      Name: !Ref ClusterName
       RoleArn: 
         !GetAtt "ControlPlaneRole.Arn"
       EncryptionConfig:
@@ -105,9 +149,15 @@ Resources:
         - !Ref WorkerNodeSubnetD
       Tags:
         - Key: Name
-          Value: !Join [ "-", [ !Ref EnvironmentName, !Ref ControlPlaneName ]]
+          Value: !Join [ "-", [ !Ref EnvironmentName, !Ref ClusterName, 'cluster/ControlPlane' ]]
+        - Key: alpha.eksctl.io/cluster-name
+          Value: !Ref ClusterName
+        - Key: eksctl.cluster.k8s.io/v1alpha1/cluster-name
+          Value: !Ref ClusterName
     DependsOn: [ControlPlaneRole, ControlPlaneSecurityGroup, SecretsEncryptionKey, SecretsEncryptionKeyAlias]
 Outputs:
+  ControlPlane:
+    Value: !Ref ControlPlane
   ControlPlaneSecurityGroup:
     Description: Security group for the cluster control plane communication with worker nodes
     Value: !Ref ControlPlaneSecurityGroup
