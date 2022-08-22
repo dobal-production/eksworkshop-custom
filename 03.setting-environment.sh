@@ -1,4 +1,5 @@
 #!/bin/bash
+cd ~/environment
 
 # after attach role, UPDATE IAM SETTINGS FOR YOUR WORKSPACE
 aws cloud9 update-environment  --environment-id $C9_PID --managed-credentials-action DISABLE
@@ -38,7 +39,9 @@ git clone https://github.com/aws-containers/ecsdemo-crystal.git
 
 # CREATE AN AWS KMS CUSTOM MANAGED KEY (CMK)
 # custom이 아닌 경우 아래의 주석 제거
-# aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
+aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
 export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text)
 echo "export MASTER_ARN=${MASTER_ARN}" | tee -a ~/.bash_profile
+
+.  ~/.bash_profile
 cat ~/.bash_profile
