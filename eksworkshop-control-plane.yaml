@@ -34,12 +34,126 @@ Parameters:
     Description: Subnets for worker nodes
     Default: subnet-048988bc91b957f14
 Resources:
+  ControlPlane:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      RoleArn: 
+        !GetAtt "ControlPlaneRole.Arn"
+      EncryptionConfig:
+        - Provider: 
+            KeyArn: !GetAtt "SecretsEncryptionKey.Arn"
+          Resources: 
+            - secrets
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+            - Type: authenticator
+            - Type: controllerManager
+            - Type: scheduler
+      ResourcesVpcConfig:
+        EndpointPrivateAccess: false
+        EndpointPublicAccess: true
+        SecurityGroupIds:
+        - !Ref ControlPlaneSecurityGroup
+        SubnetIds:
+        - !Ref WorkerNodeSubnetA
+        - !Ref WorkerNodeSubnetB
+        - !Ref WorkerNodeSubnetC
+        - !Ref WorkerNodeSubnetD
+      Version: 1.21
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/ControlPlane'
+        #- Key: alpha.eksctl.io/cluster-name
+        #  Value: !Ref ClusterName
+        #- Key: eksctl.cluster.k8s.io/v1alpha1/cluster-name
+        #  Value: !Ref ClusterName
+  
   # Control Plane
   ControlPlaneSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Cluster communication with worker nodes
+      GroupDescription: Communication between the control plane and worker nodegroups
       VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}/ControlPlaneSecurityGroup
+  
+  NodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Communication between all nodes in the cluster
+      GroupName: !Sub '${ClusterName}-ClusterSharedNodeSecurityGroup'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}/ClusterSharedNodeSecurityGroup
+      VpcId: !Ref VPC
+
+  IngressDefaultClusterToNodeSG:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    #DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow managed and unmanaged nodes to communicate with each other (all ports)
+      FromPort: 0
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !GetAtt 'ControlPlane.ClusterSecurityGroupId'      
+      ToPort: 65535
+  IngressInterNodeGroupSG:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    #DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow nodes to communicate with each other (all ports)
+      FromPort: 0
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref NodeSecurityGroup      
+      ToPort: 65535
+  IngressNodeToDefaultClusterSG:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    #DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow unmanaged nodes to communicate with control plane (all ports)
+      FromPort: 0
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref NodeSecurityGroup      
+      ToPort: 65535
+  PolicyCloudWatchMetrics:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to ControlPlaneRole
+      ManagedPolicyName: !Sub '${AWS::StackName}-PolicyCloudWatchMetrics'
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+            Resource: '*'
+      Roles: 
+        - !Ref ControlPlaneRole
+  PolicyELBPermissions:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to ControlPlaneRole
+      ManagedPolicyName: !Sub '${AWS::StackName}-PolicyELBPermissions'
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:DescribeAccountAttributes'
+              - 'ec2:DescribeAddresses'
+              - 'ec2:DescribeInternetGateways'
+            Resource: '*'
+      Roles: 
+        - !Ref ControlPlaneRole
   ControlPlaneRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -59,47 +173,15 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
       Tags:
         - Key: Name
-          Value: !Join [ "-", [ 'eksctl', !Ref ClusterName, 'cluster/ServiceRole' ]]
-        - Key: alpha.eksctl.io/cluster-name
-          Value: !Ref ClusterName
-        - Key: alpha.eksctl.io/cluster-oidc-enabled
-          Value: false
-        - Key: eksctl.cluster.k8s.io/v1alpha1/cluster-name
-          Value: !Ref ClusterName
+          Value: !Sub '${AWS::StackName}/ServiceRole'
+        #- Key: alpha.eksctl.io/cluster-name
+        #  Value: !Ref ClusterName
+        #- Key: alpha.eksctl.io/cluster-oidc-enabled
+        #  Value: false
+        #- Key: eksctl.cluster.k8s.io/v1alpha1/cluster-name
+        #  Value: !Ref ClusterName
         # - Key: alpha.eksctl.io/eksctl-version
         #  Value: 0.107.0
-  ControlPlaneCloudWatchMetricsPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties: 
-      Description: Managed Policy to attach to ControlPlane Role
-      ManagedPolicyName: !Join [ "-", [ 'eksctl', !Ref ClusterName, 'cluster', 'PolicyCloudWatchMetrics' ]]
-      Path: /
-      PolicyDocument: 
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'cloudwatch:PutMetricData'
-            Resource: '*'
-      Roles: 
-        - !Ref ControlPlaneRole
-  ControlPlaneELBPermissionsPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties: 
-      Description: Managed Policy to attach to ControlPlane Role
-      ManagedPolicyName: !Join [ "-", [ 'eksctl', !Ref ClusterName, 'cluster', 'ELBPermissions' ]]
-      Path: /
-      PolicyDocument: 
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'ec2:DescribeAccountAttributes'
-              - 'ec2:DescribeAddresses'
-              - 'ec2:DescribeInternetGateways'
-            Resource: '*'
-      Roles: 
-        - !Ref ControlPlaneRole
   SecretsEncryptionKey:
     Type: AWS::KMS::Key
     Properties: 
@@ -128,38 +210,20 @@ Resources:
     Properties:
       AliasName: alias/eksworkshop
       TargetKeyId: !Ref SecretsEncryptionKey
-  ControlPlane:
-    Type: AWS::EKS::Cluster
-    Properties:
-      Name: !Ref ClusterName
-      RoleArn: 
-        !GetAtt "ControlPlaneRole.Arn"
-      EncryptionConfig:
-        - Provider: 
-            KeyArn: !GetAtt "SecretsEncryptionKey.Arn"
-          Resources: 
-          - secrets
-      ResourcesVpcConfig:
-        SecurityGroupIds:
-        - !Ref ControlPlaneSecurityGroup
-        SubnetIds:
-        - !Ref WorkerNodeSubnetA
-        - !Ref WorkerNodeSubnetB
-        - !Ref WorkerNodeSubnetC
-        - !Ref WorkerNodeSubnetD
-      Tags:
-        - Key: Name
-          Value: !Join [ "-", [ !Ref EnvironmentName, !Ref ClusterName, 'cluster/ControlPlane' ]]
-        - Key: alpha.eksctl.io/cluster-name
-          Value: !Ref ClusterName
-        - Key: eksctl.cluster.k8s.io/v1alpha1/cluster-name
-          Value: !Ref ClusterName
-    DependsOn: [ControlPlaneRole, ControlPlaneSecurityGroup, SecretsEncryptionKey, SecretsEncryptionKeyAlias]
 Outputs:
-  ControlPlane:
-    Value: !Ref ControlPlane
-  ControlPlaneSecurityGroup:
-    Description: Security group for the cluster control plane communication with worker nodes
+  CertificateAuthorityData:
+    Value: !GetAtt 'ControlPlane.CertificateAuthorityData'
+  ControlPlaneArn:
+    Value: !GetAtt 'ControlPlane.Arn'
+    Export: 
+      Name: !Sub '${AWS::StackName}::ControlPlaneArn'
+  ControlPlaneSecurityGroupId:
     Value: !Ref ControlPlaneSecurityGroup
+  ClusterStackName:
+    Value: !Ref AWS::StackName
+  ControlPlaneEndpoint:
+    Value: !GetAtt 'ControlPlane.Endpoint'
+    Export:
+      Name: !Sub '${AWS::StackName}::Endpoint'
   SecretsEncryptionKey:
     Value: !Ref SecretsEncryptionKey
