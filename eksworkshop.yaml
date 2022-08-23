@@ -1,39 +1,19 @@
+cat << EOF > eksworkshop.yaml
 ---
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 
 metadata:
   name: eksworkshop-eksctl
-  region: ap-northeast-2
-  version: "1.20"
+  region: ${AWS_REGION}
+  version: "1.21"
 
-vpc:
-  id: "vpc-007a6f379fe5ff535"  # (optional, must match VPC ID used for each subnet below)
-  cidr: "10.21.0.0/16"       # (optional, must match CIDR used by the given VPC)
-  subnets:
-    # must provide 'private' and/or 'public' subnets by availibility zone as shown
-    private:
-      ap-northeast-2a:
-        id: "subnet-092a9fd8d712bbcf0"
-        cidr: "10.22.2.0/28" # (optional, must match CIDR used by the given subnet)
-
-      ap-northeast-2b:
-        id: "subnet-00b26bfafbb6605d6"
-        cidr: "10.22.2.16/28"  # (optional, must match CIDR used by the given subnet)
-
-      ap-northeast-2c:
-        id: "subnet-0d22d0f9ff3acdb15"
-        cidr: "10.22.2.32/28"   # (optional, must match CIDR used by the given subnet)
-      
-      ap-northeast-2d:
-        id: "subnet-0c5cfd13e828904d0"
-        cidr: "10.22.2.48/28"   # (optional, must match CIDR used by the given subnet)
+availabilityZones: ["${AZS[0]}", "${AZS[1]}", "${AZS[2]}"]
 
 managedNodeGroups:
 - name: nodegroup
-  desiredCapacity: 4
-  privateNetworking: true
-  instanceType: m5.large
+  desiredCapacity: 3
+  instanceType: t3.small
   ssh:
     enableSsm: true
 
@@ -44,3 +24,6 @@ managedNodeGroups:
 
 secretsEncryption:
   keyARN: ${MASTER_ARN}
+EOF
+
+eksctl create cluster -f eksworkshop.yaml
