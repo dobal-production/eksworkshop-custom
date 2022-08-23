@@ -9,21 +9,22 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
 export AZS=($(aws ec2 describe-availability-zones --query 'AvailabilityZones[].ZoneName' --output text --region $AWS_REGION))
 
-# 환경변수 추가
-export SUBNET_IDS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].SubnetId' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
-export SUBNET_CIDRS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].CidrBlock' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
-export VPC_ID=($(aws ec2 describe-vpcs --query 'Vpcs[].VpcId' --filters "Name=tag:Name,Values=*eksworkshop*" --output text --region $AWS_REGION))
-export VPC_CIDR=($(aws ec2 describe-vpcs --query 'Vpcs[].CidrBlock' --filters "Name=tag:Name,Values=*eksworkshop*" --output text --region $AWS_REGION))
+# Custom vpc일 경우 아래 주석 제거
+#export SUBNET_IDS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].SubnetId' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
+e#xport SUBNET_CIDRS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].CidrBlock' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
+#export VPC_ID=($(aws ec2 describe-vpcs --query 'Vpcs[].VpcId' --filters "Name=tag:Name,Values=*eksworkshop*" --output text --region $AWS_REGION))
+#export VPC_CIDR=($(aws ec2 describe-vpcs --query 'Vpcs[].CidrBlock' --filters "Name=tag:Name,Values=*eksworkshop*" --output text --region $AWS_REGION))
 
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set
 
 echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.bash_profile
 echo "export AWS_REGION=${AWS_REGION}" | tee -a ~/.bash_profile
 echo "export AZS=(${AZS[@]})" | tee -a ~/.bash_profile
-echo "export SUBNET_IDS=(${SUBNET_IDS[@]})" | tee -a ~/.bash_profile
-echo "export SUBNET_CIDRS=(${SUBNET_CIDRS[@]})" | tee -a ~/.bash_profile
-echo "export VPC_ID=${VPC_ID}" | tee -a ~/.bash_profile 
-echo "export VPC_CIDR=${VPC_CIDR}" | tee -a ~/.bash_profile
+# Custom vpc일 경우 아래 주석 제거
+#echo "export SUBNET_IDS=(${SUBNET_IDS[@]})" | tee -a ~/.bash_profile
+#echo "export SUBNET_CIDRS=(${SUBNET_CIDRS[@]})" | tee -a ~/.bash_profile
+#echo "export VPC_ID=${VPC_ID}" | tee -a ~/.bash_profile 
+#echo "export VPC_CIDR=${VPC_CIDR}" | tee -a ~/.bash_profile
 aws configure set default.region ${AWS_REGION}
 aws configure get default.region
 
