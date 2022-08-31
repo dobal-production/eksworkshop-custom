@@ -11,7 +11,7 @@ export AZS=($(aws ec2 describe-availability-zones --query 'AvailabilityZones[].Z
 
 # Custom vpc일 경우 아래 주석 제거
 #export SUBNET_IDS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].SubnetId' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
-e#xport SUBNET_CIDRS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].CidrBlock' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
+#export SUBNET_CIDRS=($(aws ec2 describe-subnets --query 'sort_by(Subnets, &AvailabilityZoneId)[].CidrBlock' --filters "Name=tag:Name,Values=*EKS Worker Node Subnet*" --output text --region $AWS_REGION))
 #export VPC_ID=($(aws ec2 describe-vpcs --query 'Vpcs[].VpcId' --filters "Name=tag:Name,Values=*eksworkshop*" --output text --region $AWS_REGION))
 #export VPC_CIDR=($(aws ec2 describe-vpcs --query 'Vpcs[].CidrBlock' --filters "Name=tag:Name,Values=*eksworkshop*" --output text --region $AWS_REGION))
 
