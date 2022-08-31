@@ -6,3 +6,7 @@
 
 cp ./backend-policy.yaml ~/environment/calico_resources/
 cp ./frontend-policy.yaml ~/environment/calico_resources/
+
+cd ~/environment/calico_resources/
+kubectl apply -f backend-policy.yaml
+kubectl apply -f frontend-policy.yaml
