@@ -33,7 +33,21 @@ kubectl create ns my-nginx
 # create the nginx deployment with 2 replicas
 kubectl -n my-nginx apply -f ~/environment/run-my-nginx.yaml
 
+sleep 20s
+
 kubectl -n my-nginx get pods -o wide
 
-# kubectl -n my-nginx get pods -o yaml | grep 'podIP:'
+kubectl -n my-nginx get pods -o yaml | grep 'podIP:'
+
+sleep 30s
+
+#Creating a Service
+kubectl -n my-nginx expose deployment/my-nginx
+
+sleep 10s
+kubectl -n my-nginx get svc my-nginx
+
+kubectl -n my-nginx describe svc my-nginx
+
+
 
