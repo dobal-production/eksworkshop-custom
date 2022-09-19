@@ -1,0 +1,37 @@
+#!/bin/bash
+
+cat << EoF > ${HOME}/environment/ebs_statefulset/mysql-services.yaml
+# Headless service for stable DNS entries of StatefulSet members.
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: mysql
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  clusterIP: None
+  selector:
+    app: mysql
+---
+# Client service for connecting to any MySQL instance for reads.
+# For writes, you must instead connect to the leader: mysql-0.mysql.
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: mysql
+  name: mysql-read
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  selector:
+    app: mysql
+EoF
+
+kubectl create -f ${HOME}/environment/ebs_statefulset/mysql-services.yaml
