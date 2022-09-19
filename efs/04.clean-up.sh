@@ -15,10 +15,9 @@ do
     aws efs delete-mount-target --mount-target-id $target
 done
 
+sleep 2m
 aws efs describe-file-systems --file-system-id $FILE_SYSTEM_ID
-
 aws efs delete-file-system --file-system-id $FILE_SYSTEM_ID
-
 aws ec2 delete-security-group --group-id $MOUNT_TARGET_GROUP_ID
 
 kubectl delete -k "github.com/kubernetes-sigs/aws-efs-csi-driver/deploy/kubernetes/overlays/stable?ref=release-1.3"
