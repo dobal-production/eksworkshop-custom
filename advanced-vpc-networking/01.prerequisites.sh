@@ -1,4 +1,7 @@
 #!/bin/bash
+# uninstall opsview
+helm uninstall kube-ops-view
+sleep 10s
 
 # Add secondary CIDRs to VPC
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=eksctl-eksworkshop* --query 'Vpcs[].VpcId' --output text)
