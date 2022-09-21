@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 3개의 pod이 단일 노드에 있지 않도록 podAntiAffinity
+echo "##### 3개의 pod들이 각 노드들에 하나씩 들어가도록 podAntiAffinity 적용\n"
 cat <<EoF > ~/environment/redis-with-node-affinity.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -31,7 +31,7 @@ spec:
         image: redis:3.2-alpine
 EoF
 
-# Web Server
+echo "#####  Web Server"
 cat <<EoF > ~/environment/web-with-node-affinity.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -75,6 +75,6 @@ kubectl apply -f ~/environment/redis-with-node-affinity.yaml
 kubectl apply -f ~/environment/web-with-node-affinity.yaml
 
 sleep 20s
-# 노드 이름으로 정렬해본다.
+echo "#####  노드 이름으로 정렬해본다."
 kubectl get pods -o wide --sort-by='.spec.nodeName'
 
