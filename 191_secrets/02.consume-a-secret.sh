@@ -24,9 +24,10 @@ spec:
       secretName: test-creds
 EOF
 
-# Deploy the pod on your EKS cluster:
+echo "##### Deploy the pod on your EKS cluster:"
 kubectl --namespace secretslab apply -f podconsumingsecret.yaml
+sleep 10s
 
-# Attach to the pod and attempt to access the secret:
+echo "##### Attach to the pod and attempt to access the secret:"
 kubectl --namespace secretslab exec -it consumesecret -- cat /tmp/test-creds
 
