@@ -3,19 +3,19 @@
 test -n "$AWS_REGION" && echo AWS_REGION is "$AWS_REGION" || echo AWS_REGION is not set
 export EKS_CLUSTERNAME="eksworkshop-eksctl"
 
-# Create a test secret with the AWS Secrets Manager.
+echo "##### Create a test secret with the AWS Secrets Manager."
 aws --region "$AWS_REGION" secretsmanager \
   create-secret --name DBSecret_eksworkshop \
   --secret-string '{"username":"foo", "password":"super-sekret"}'
 
-# Get secret’s ARN.
+echo "#####  Get secret’s ARN."
 SECRET_ARN=$(aws --region "$AWS_REGION" secretsmanager \
     describe-secret --secret-id  DBSecret_eksworkshop \
     --query 'ARN' | sed -e 's/"//g' )
 
 echo $SECRET_ARN
 
-# Create an IAM with permissions to access the secret.
+echo "#####  Create an IAM with permissions to access the secret."
 IAM_POLICY_NAME_SECRET="DBSecret_eksworkshop_secrets_policy_$RANDOM"
 IAM_POLICY_ARN_SECRET=$(aws --region "$AWS_REGION" iam \
 	create-policy --query Policy.Arn \
