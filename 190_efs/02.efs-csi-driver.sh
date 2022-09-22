@@ -16,3 +16,4 @@ sleep 20s
 kubectl get pvc -n storage
 kubectl get pv
 
+cd ~/environment/eksworkshop-custom/190_efs
