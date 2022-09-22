@@ -1,5 +1,12 @@
+#!/bin/bash
+
+helm uninstall kube-ops-view
+sleep 10s
+
 kubectl delete deployments --all
 kubectl delete service  nginx
+
+kubectl set env ds aws-node -n kube-system AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG-
 
 cd $HOME/environment
 kubectl delete -f eniconfig
