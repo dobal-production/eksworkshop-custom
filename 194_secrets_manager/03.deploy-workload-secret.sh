@@ -12,19 +12,14 @@ spec:
     objects: |
         - objectName: "DBSecret_eksworkshop"
           objectType: "secretsmanager"
-          jmesPath:
-          - path: username
-            objectAlias: username
-          - path: password
-            objectAlias: password
 EOF
 
-# Create custom resource.
+echo "##### Create custom resource."
 kubectl apply -f nginx-deployment-spc.yaml
 
 kubectl get SecretProviderClass
 
-# Create pod and mount secrets
+echo "##### Create pod and mount secrets"
 cat << EOF > nginx-deployment.yaml
 ---
 apiVersion: apps/v1
@@ -66,8 +61,6 @@ kubectl apply -f nginx-deployment.yaml
 sleep 10
 kubectl get pods -l "app=nginx"
 
-# Verify the mounted secret
+echo "##### Verify the mounted secret"
 export POD_NAME=$(kubectl get pods -l app=nginx -o jsonpath='{.items[].metadata.name}')
 kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/DBSecret_eksworkshop; echo
-kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/username; echo
-kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/password; echo

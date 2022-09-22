@@ -1,3 +1,7 @@
+#!/bin/bash
+
+echo "##### Create SecretProviderClass to extract key-value pairs"
+
 cat << EOF > nginx-deployment-spc-k8s-secrets.yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
@@ -31,7 +35,7 @@ kubectl apply -f nginx-deployment-spc-k8s-secrets.yaml
 kubectl get SecretProviderClass nginx-deployment-spc-k8s-secrets
 
 
-# Create pod mount secrets volumes and set up Environment variables.
+echo "##### Create pod mount secrets volumes and set up Environment variables."
 cat << EOF > nginx-deployment-k8s-secrets.yaml
 ---
 apiVersion: apps/v1
@@ -85,9 +89,16 @@ kubectl apply -f nginx-deployment-k8s-secrets.yaml
 sleep 10
 kubectl get pods -l "app=nginx-k8s-secrets"
 
-kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/dbusername; echo
-kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/dbpassword; echo
-kubectl exec -it ${POD_NAME} -- env | grep DB; echo
+# export POD_NAME=$(kubectl get pods -l app=nginx-k8s-secrets -o jsonpath='{.items[].metadata.name}')
+# kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/dbusername;
+
+# echo -n "Anykey"
+
+# kubectl exec -it ${POD_NAME} -- cat /mnt/secrets/dbpassword;
+
+# sleep 2s
+
+# kubectl exec -it ${POD_NAME} -- env | grep DB
 
 kubectl describe secrets my-secret-01
 
