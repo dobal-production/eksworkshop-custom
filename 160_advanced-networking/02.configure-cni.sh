@@ -19,7 +19,7 @@ do
 	aws ec2 terminate-instances --instance-ids $i
 done
 
-ops-view 다시 설치
+echo "##### ops-view 다시 설치"
 helm install kube-ops-view \
 stable/kube-ops-view \
 --set service.type=LoadBalancer \
