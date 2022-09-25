@@ -19,4 +19,8 @@ stable/kube-ops-view \
 --set service.type=LoadBalancer \
 --set rbac.create=True
 
+sleep 10s
 kubectl get svc kube-ops-view | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
+
+echo "##### Deploy the metric server"
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
