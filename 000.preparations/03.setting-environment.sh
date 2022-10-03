@@ -48,4 +48,4 @@ echo "export MASTER_ARN=${MASTER_ARN}" | tee -a ~/.bash_profile
 .  ~/.bash_profile
 cat ~/.bash_profile
 
-cd ~/environment/eksworkshop/000.preparations
+cd ~/environment/eksworkshop-custom/000.preparations
