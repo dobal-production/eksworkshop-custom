@@ -39,9 +39,10 @@ git clone https://github.com/aws-containers/ecsdemo-nodejs.git
 git clone https://github.com/aws-containers/ecsdemo-crystal.git
 
 # CREATE AN AWS KMS CUSTOM MANAGED KEY (CMK)
-# custom이 아닌 경우 아래의 주석 제거
-aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
-export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text)
+# custom일 경우 경우 아래의 주석 제거
+# aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
+# export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text)
+export MASTER_ARN=$(aws eks describe-cluster --name eksworkshop-eksctl --query cluster.encryptionConfig[0].provider.keyArn --output text)
 echo "export MASTER_ARN=${MASTER_ARN}" | tee -a ~/.bash_profile
 
 .  ~/.bash_profile
