@@ -27,3 +27,5 @@ secretsEncryption:
 EOF
 
 eksctl create cluster -f eksworkshop.yaml
+
+cd ~/environment/eksworkshop-custom/000.preparations
