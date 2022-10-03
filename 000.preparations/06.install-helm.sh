@@ -24,3 +24,5 @@ kubectl get svc kube-ops-view | tail -n 1 | awk '{ print "Kube-ops-view URL = ht
 
 echo "##### Deploy the metric server"
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+
+cd ~/environment/eksworkshop/000.preparations

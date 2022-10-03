@@ -25,3 +25,5 @@ fi
 eksctl create iamidentitymapping --cluster eksworkshop-eksctl --arn ${rolearn} --group system:masters --username admin
 
 kubectl describe configmap -n kube-system aws-auth
+
+cd ~/environment/eksworkshop/000.preparations
