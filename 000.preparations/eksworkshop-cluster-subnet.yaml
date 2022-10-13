@@ -1,0 +1,272 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:  This template deploys a VPC, with a pair of public and private subnets spread
+  across two Availability Zones. It deploys an internet gateway, with a default
+  route on the public subnets. It deploys a pair of NAT gateways (one in each AZ),
+  and default routes for them in the private subnets.
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: eksworkshop
+  EKSClusterName:
+    Description: An eks cluster name
+    Type: String
+    Default: ekscluster-custom
+  VPCID:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: vpc-007a6f379fe5ff535
+  InternetGatewayID:
+    Description: internet gateway id
+    Type: String
+    Default: igw-0d817f3a407bdfcce
+  WebSubnetACidr:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 10.21.10.0/28
+  WebSubnetBCidr:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 10.21.10.16/28
+  WorkerNodeSubnetACidr:
+    Description: Please enter the IP range (CIDR notation) for eks worker node zone-a in the first Availability Zone
+    Type: String
+    Default: 10.21.11.0/28
+  WorkerNodeSubnetBCidr:
+    Description: Please enter the IP range (CIDR notation) for eks worker node zone-b in the second Availability Zone
+    Type: String
+    Default: 10.21.11.16/28
+  WorkerNodeSubnetCCidr:
+    Description: Please enter the IP range (CIDR notation) for eks worker node zone-c in the second Availability Zone
+    Type: String
+    Default: 10.21.11.32/28
+  WorkerNodeSubnetDCidr:
+    Description: Please enter the IP range (CIDR notation) for eks worker node zone-d in the second Availability Zone
+    Type: String
+    Default: 10.21.11.48/28
+Resources:
+  WebSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref WebSubnetACidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Web Subnet (AZ1)
+  WebSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref WebSubnetBCidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Web Subnet (AZ2)
+  WorkerNodeSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref WorkerNodeSubnetACidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ1)
+        - Key: "alpha.eksctl.io/cluster-name"
+          Value: !Ref EKSClusterName
+  WorkerNodeSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref WorkerNodeSubnetBCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ2)
+        - Key: "alpha.eksctl.io/cluster-name"
+          Value: !Ref EKSClusterName
+  WorkerNodeSubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Select [2, !GetAZs '']
+      CidrBlock: !Ref WorkerNodeSubnetCCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ3)
+        - Key: "alpha.eksctl.io/cluster-name"
+          Value: !Ref EKSClusterName
+  WorkerNodeSubnetD:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCID
+      AvailabilityZone: !Select [3, !GetAZs '']
+      CidrBlock: !Ref WorkerNodeSubnetDCidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} EKS Worker Node Subnet (AZ4)
+        - Key: "alpha.eksctl.io/cluster-name"
+          Value: !Ref EKSClusterName
+  NatGatewayAEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  NatGatewayA:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayAEIP.AllocationId
+      SubnetId: !Ref WebSubnetA  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName} Web Routes"
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGatewayID
+  WebSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref WebSubnetA
+  WebSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref WebSubnetB
+  WorkerNodeSubnetARouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName} EKS Worker Node Routes (AZ1)"
+  WorkerNodeSubnetARoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetARouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  WorkerNodeSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetARouteTable
+      SubnetId: !Ref WorkerNodeSubnetA
+  WorkerNodeSubnetBRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName} EKS Worker Node Routes (AZ2)"
+  WorkerNodeSubnetBRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetBRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  WorkerNodeSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetBRouteTable
+      SubnetId: !Ref WorkerNodeSubnetB
+  WorkerNodeSubnetCRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName} EKS Worker Node Routes (AZ3)"
+  WorkerNodeSubnetCRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetCRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  WorkerNodeSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetCRouteTable
+      SubnetId: !Ref WorkerNodeSubnetC
+  WorkerNodeSubnetDRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName} EKS Worker Node Routes (AZ4)"
+  WorkerNodeSubnetDRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetDRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+  WorkerNodeSubnetDRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WorkerNodeSubnetDRouteTable
+      SubnetId: !Ref WorkerNodeSubnetD
+  NoIngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-no-ingress-sg
+      GroupDescription: "Security group with no ingress rule"
+      VpcId: !Ref VPCID
+  Cloud9Instance:
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties:
+      AutomaticStopTimeMinutes: 1440
+      Description: Cloud9 Instance for eksworkshop
+      ImageId: amazonlinux-2-x86_64
+      InstanceType: m5.large
+      Name: !Sub ${EnvironmentName}-cloud9-instance
+      SubnetId: !Ref WebSubnetA
+Outputs:
+  WebSubnets:
+    Description: A list of the web subnets
+    Value: !Join [ ",", [ !Ref WebSubnetA, !Ref WebSubnetB ]]
+  WebSubnetA:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref WebSubnetA
+  WebSubnetB:
+    Description: A reference to the public subnet in the 2nd Availability Zone
+    Value: !Ref WebSubnetB
+  WorkerNodeSubnetA:
+    Description: A reference to the private subnet in the 1st Availability Zone
+    Value: !Ref WorkerNodeSubnetA
+  WorkerNodeSubnetACidr:
+    Value: !GetAtt 'WorkerNodeSubnetA.CidrBlock'
+  WorkerNodeSubnetB:
+    Description: A reference to the private subnet in the 2nd Availability Zone
+    Value: !Ref WorkerNodeSubnetB
+  WorkerNodeSubnetBCidr:
+    Value: !GetAtt 'WorkerNodeSubnetB.CidrBlock'
+  WorkerNodeSubnetC:
+    Description: A reference to the private subnet in the 3rd Availability Zone
+    Value: !Ref WorkerNodeSubnetC
+  WorkerNodeSubnetCCidr:
+    Value: !GetAtt 'WorkerNodeSubnetC.CidrBlock'
+  WorkerNodeSubnetD:
+    Description: A reference to the private subnet in the 4th Availability Zone
+    Value: !Ref WorkerNodeSubnetD
+  WorkerNodeSubnetDCidr:
+    Value: !GetAtt 'WorkerNodeSubnetD.CidrBlock'
+  NoIngressSecurityGroup:
+    Description: Security group with no ingress rule
+    Value: !Ref NoIngressSecurityGroup
+  Cloud9Instance:
+    Value: !Ref Cloud9Instance
+  Cloud9InstanceArn:
+    Value: !GetAtt 'Cloud9Instance.Arn'
