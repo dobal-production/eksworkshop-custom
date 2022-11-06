@@ -9,5 +9,11 @@
     . 04.launch-eks-cluster.sh
     . 05.post-eks-cluster.sh
 
+## Blueprint 이용시
+    . 01.modify-disk-size.sh
+    . 02.install-tools.sh
+    . 03.setting-environment.sh
+    . 05.post-eks-cluster.sh
+
 ## Helm & OpsView 설치
     . 06.install-helm.sh
