@@ -9,6 +9,10 @@
     . 04.launch-eks-cluster.sh
     . 05.post-eks-cluster.sh
 
+### eksworkshop 원본과 다른 점
+* t3인스턴스를 m5인스턴스로 변경.
+* Nitro-based instance를 사용하기 위함.
+
 ## Brueprint를 사용한 경우
     aws s3 cp s3://ee-assets-prod-us-east-1/modules/bd7b369f613f452dacbcea2a5d058d5b/v6/eksinit.sh . && chmod +x eksinit.sh && ./eksinit.sh ; source ~/.bash_profile ; source ~/.bashrc
 
