@@ -1,0 +1,28 @@
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eksworkshop-eksctl
+  region: ap-northeast-2
+  version: "1.21"
+
+availabilityZones: ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c"]
+
+managedNodeGroups:
+- name: nodegroup
+  ami: ami-027f591d982cfe0b1
+  desiredCapacity: 3
+  instanceType: m5.large
+  overrideBootstrapCommand: |
+      #!/bin/bash
+      source /var/lib/cloud/scripts/eksctl/bootstrap.helper.sh
+      /etc/eks/bootstrap.sh eksworkshop-eksctl --container-runtime containerd
+
+# To enable all of the control plane logs, uncomment below:
+# cloudWatch:
+#  clusterLogging:
+#    enableTypes: ["*"]
+
+secretsEncryption:
+  keyARN: arn:aws:kms:ap-northeast-2:300590185595:key/b4e882bd-7c07-4d0a-8d9f-006109a3a889
