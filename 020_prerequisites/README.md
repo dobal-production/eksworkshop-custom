@@ -12,8 +12,10 @@
 ## Brueprint를 사용한 경우
     aws s3 cp s3://ee-assets-prod-us-east-1/modules/bd7b369f613f452dacbcea2a5d058d5b/v6/eksinit.sh . && chmod +x eksinit.sh && ./eksinit.sh ; source ~/.bash_profile ; source ~/.bashrc
 
-## Helm & OpsView 설치
+## Helm, Kube-Ops-View, Metric server 설치
     . 06.install-helm.sh
+
+![IAM Role](images/kube-ops-view.png)
 
 ## 참고사항
 * 클러스터 생성에 약 20여분 소요됨.
