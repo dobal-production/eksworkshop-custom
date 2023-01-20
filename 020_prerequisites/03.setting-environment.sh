@@ -30,8 +30,6 @@ aws configure get default.region
 
 aws sts get-caller-identity --query Arn | grep eksworkshop-admin -q && echo "IAM role valid" || echo "IAM role NOT valid"
 
-# aws sts get-caller-identity --query Arn | grep DobalCloud9BaseRole -q && echo "IAM role valid" || echo "IAM role NOT valid"
-
 # CLONE THE SERVICE REPOS
 cd ~/environment
 git clone https://github.com/aws-containers/ecsdemo-frontend.git
@@ -39,13 +37,13 @@ git clone https://github.com/aws-containers/ecsdemo-nodejs.git
 git clone https://github.com/aws-containers/ecsdemo-crystal.git
 
 # CREATE AN AWS KMS CUSTOM MANAGED KEY (CMK)
-# custom일 경우 경우 아래의 주석 제거
-# aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
-# export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text)
-export MASTER_ARN=$(aws eks describe-cluster --name eksworkshop-eksctl --query cluster.encryptionConfig[0].provider.keyArn --output text)
+# custom일 경우 경우 아래의 주석 사용
+# export MASTER_ARN=$(aws eks describe-cluster --name eksworkshop-eksctl --query cluster.encryptionConfig[0].provider.keyArn --output text)
+aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(aws kms create-key --query KeyMetadata.Arn --output text)
+export MASTER_ARN=$(aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text)
 echo "export MASTER_ARN=${MASTER_ARN}" | tee -a ~/.bash_profile
 
 .  ~/.bash_profile
 cat ~/.bash_profile
 
-cd ~/environment/eksworkshop-custom/000.preparations
+cd ~/environment/eksworkshop-custom/020_prerequisites

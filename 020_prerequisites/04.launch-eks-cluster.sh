@@ -6,7 +6,7 @@ kind: ClusterConfig
 metadata:
   name: eksworkshop-eksctl
   region: ${AWS_REGION}
-  version: "1.21"
+  version: "1.22"
 
 availabilityZones: ["${AZS[0]}", "${AZS[1]}", "${AZS[2]}"]
 
@@ -28,4 +28,4 @@ EOF
 
 eksctl create cluster -f eksworkshop.yaml
 
-cd ~/environment/eksworkshop-custom/000.preparations
+cd ~/environment/eksworkshop-custom/020_prerequisites
