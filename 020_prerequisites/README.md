@@ -16,6 +16,26 @@
     . 06.install-helm.sh
 
 ![IAM Role](images/kube-ops-view.png)
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        application: kube-ops-view
+        component: frontend
+      name: kube-ops-view
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: external 
+        service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+        service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
+    spec:
+      selector:
+        application: kube-ops-view
+        component: frontend
+      type: LoadBalancer
+      ports:
+      - port: 80
+        protocol: TCP
+        targetPort: 8080
 
 ## 참고사항
 * 클러스터 생성에 약 20여분 소요됨.
