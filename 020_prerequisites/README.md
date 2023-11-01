@@ -16,6 +16,7 @@
     . 06.install-helm.sh
 
 ![IAM Role](images/kube-ops-view.png)
+
     apiVersion: v1
     kind: Service
     metadata:
