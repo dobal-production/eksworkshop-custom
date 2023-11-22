@@ -28,6 +28,7 @@ kubectl completion bash >>  ~/.bash_completion
 
 echo 'export LBC_VERSION="v2.5.4"' >>  ~/.bash_profile
 echo 'export LBC_CHART_VERSION="1.4.1"' >>  ~/.bash_profile
+echo 'export CLUSTER_NAME=eksworkshop-eksctl' >> ~/.bash_profile
 .  ~/.bash_profile
 
 cat ~/.bash_profile

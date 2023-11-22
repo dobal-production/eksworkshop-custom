@@ -3,11 +3,11 @@ cd ~/environment
 
 # for blueprint it doesn't work
 kubectl get nodes # if we see our 3 nodes, we know we have authenticated correctly
-aws eks update-kubeconfig --name eksworkshop-eksctl --region ${AWS_REGION}
+aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
 
 kubectl get nodes # if we see our 3 nodes, we know we have authenticated correctly
 
-STACK_NAME=$(eksctl get nodegroup --cluster eksworkshop-eksctl -o json | jq -r '.[].StackName')
+STACK_NAME=$(eksctl get nodegroup --cluster ${CLUSTER_NAME} -o json | jq -r '.[].StackName')
 ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME | jq -r '.StackResources[] | select(.ResourceType=="AWS::IAM::Role") | .PhysicalResourceId')
 echo "export ROLE_NAME=${ROLE_NAME}" | tee -a ~/.bash_profile
 
@@ -22,7 +22,7 @@ elif echo ${c9builder} | grep -q assumed-role; then
         echo Role ARN: ${rolearn}
 fi
 
-eksctl create iamidentitymapping --cluster eksworkshop-eksctl --arn ${rolearn} --group system:masters --username admin
+eksctl create iamidentitymapping --cluster ${CLUSTER_NAME} --arn ${rolearn} --group system:masters --username admin
 
 kubectl describe configmap -n kube-system aws-auth
 

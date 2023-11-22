@@ -14,6 +14,6 @@ helm completion bash >> ~/.bash_completion
 source <(helm completion bash)
 
 # echo "##### Deploy the metric server"
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+# kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
 
 cd ~/environment
