@@ -11,6 +11,9 @@ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip
 unzip awscliv2.zip
 sudo ./aws/install
 
+sudo curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+sudo mv ./kustomize /usr/local/bin
+
 sudo yum -y install jq gettext bash-completion moreutils
 
 echo 'yq() {
