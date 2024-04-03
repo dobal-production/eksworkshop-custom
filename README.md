@@ -5,5 +5,5 @@
 URL : https://www.eksworkshop.com
 
 ## eksworkshop old version
-구 버전의 보조 자료는 archive 디렉토리로 이동하였습니다.  
+구 버전의 보조 자료는 [archive](archive) 디렉토리로 이동하였습니다.  
 URL : https://archive.eksworkshop.com
