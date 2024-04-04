@@ -83,6 +83,38 @@
 * 두 방식 모두 AWS Load Balancer Controller의 설치가 전제되어야 함. 본 교육에서 생성한 클러스터에는 설치된 상태.
 
 ## Load Balancers
+### 개요
+* 클라우드 플랫폼에서 제공되는 로드 밸런서를 프로비저닝하여 pod에 연결
+* `service.beta.kubernetes.io/aws-load-balancer-scheme` 어노테이션으로 public/private 서브넷 선택
+* NodePort 서비스를 생성하고, 외부의 로드밸런서를 연결
+* 컨테이너 내부 dns에서는 ClusterIP가 자동할당 (default)
+* loadBalancerIP 자동/지정 가능
+* loadBalancerSourceRanges도 설정 가능하지만, 로드 밸런서에서 하는 것이 좋음
+* 로드 밸런서 생성에 수 분이 걸림
+* `Service` 예시
+  ```yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: ui-nlb
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: external
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing # internal(default) or internet-facing
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
+    namespace: ui
+  spec:
+    type: LoadBalancer
+    loadBalancerIP: xxx.xxx.xxx.xxx #자동할당, 지정가능
+    ports:
+    - name: "http-port"
+      protocol: "TCP"
+      port: 8080      #clusterIP에서 수신할 포트
+      targetPort: 80  #목적 컨테이너 포트
+      nodePort: 30080 #모든 노드에서 수신할 포트
+    # 노드에 트래픽이 도착한 후, 다른 노드의 pod을 포함하여 밸런싱
+    externalTrafficPolicy: "Cluster" # Cluster/Local
+  ```
+
 ### Creating the load balancer
 ```
 apiVersion: v1
@@ -121,12 +153,34 @@ kubectl get svc -n ui ui-nlb | tail -n 1 | awk '{ print "UI URL = http://"$4 }'
 
 * IP mode의 장점
     * 인바운드 연결을 위한 보다 효율적인 네트워크 경로를 생성하여 EC2 워커 노드에서 kube-proxy를 우회.
-    * ```externalTrafficPolicy```와 다양한 구성 옵션의 장단점 같은 측면을 고려할 필요가 없음
+    * `.spec.externalTrafficPolicy`와 다양한 구성 옵션의 장단점 같은 측면을 고려할 필요가 없음
     * Amazon EC2와 AWS Fargate 상에서 동작하는 파드에 모두 사용 가능 
 
 ## Ingress
 * 쿠버네티스 인그레스는 클러스터에서 실행 중인 쿠버네티스 서비스에 대한 외부 또는 내부 HTTP(S) 액세스를 관리할 수 있는 API 리소스
 * ALB는 호스트 또는 경로 기반 라우팅, TLS(전송 계층 보안) termination, 웹소켓, HTTP/2, AWS WAF(웹 애플리케이션 방화벽) 통합, 통합 액세스 로그, 상태 확인 등 다양한 기능을 지원
+* * 서비스 타입을 LoadBalancer 타입으로 할 경우, 서비스마다 LB가 생기고, 엔드포인트도 각각 생기며, SSL 인증서도 각각 설치해야 함
+* `Ingress`를 이용하면 단일 endpoint url로 쌉가능
+* 라우팅 정의와 보안 연결 등과 같은 세부 설정은 인그레스에 의해 수행
+* Ingress는 Layer 7 레벨의 오브젝트, http/https 이외의 서비스를 외부로 노출할 경우에는 NordPort, LoadBalancer 타입을 사용
+* 외부 요청(http, https)을 클러스터 내의 서비스로 라우팅 - alb와 유사
+* 가상 호스트 기반의 요청 처리 : 같은 ip에 대해 다른 도메인 이름으로 요청이 도착했을 때, 어떻게 처리할 것인지 정의
+* SSL/TLS 보안 연결 처리 : 보안 연결을 위한 인증서 적용
+* 라우팅 규칙에 맞지 않는 트래픽은 default backend로 보내짐
+* 인그레스를 동작시키기 위해서는 인그레스 컨트롤(ingress controller)러가 있어야 함
+* ingress controller에 종속적인 옵션들은 annotation에 표기
+* ingress가 동작하기 위해서는 ingress controller가 필요
+* ingress controller는 kube-controller-manager에 의해 자동으로 시작되지 않음
+* Ingress → AWS Load Balancer Controller를 프로비저닝(controller는 pod로 동작함)
+* Service → Network Load Balancer를 프로비저닝
+* IAM Role을 만들고, Service Account와 매핑시켜야 함
+
+### Ingress Rule
+* host (optional) : 호스트 네임, ex) foo.dobal.com
+* paths : serviceName과 servicePort를 포함하는 path 리스트
+    * path : 경로
+    * backend : serviceName, servicePort
+* rule에 매칭되지 않을 경우 default backend로 보내짐. → 설정했을 경우.
 
 ### Creating the ingress  
 * Ingress로 생성된 ALB URL 얻기 
