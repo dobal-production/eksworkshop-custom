@@ -41,7 +41,7 @@
 * 여러 포트를 설정할 수 있음. (예, 8080 → 80, 8443 → 443)
 * Immutable한 Static IP를 지정할 수 있음
 * Single Point of Failure가 될 수 있음
-  ```
+  ```yaml
   spec:
   type: ClusterIP
   clusterIP : 10.3.1.1
@@ -57,7 +57,7 @@
 * 포트 범위 : 30000 ~ 32767
 * 접근할 수 있는 포트는 랜덤으로 정해지지만, 특정 포트로 접근하도록 설정할 수도 있음
 * 컨테이너 내부 dns에서는 ClusterIP가 사용. default 자동할당, 지정 가능 (서비스 디스커버리)
-  ```
+  ```yaml
   spec:
   type: NodePort
   ports:
@@ -78,8 +78,8 @@
 * Service type을 LoadBalancer로 설정하는 방식은 서비스마다 NLB가 생성됨.
 
 ### 전제 조건    
-* Public Subnet tag에 ```kubernetes.io/role/elb:1``` 필수
-* Private Subnet tag에 ```kubernetes.io/role/internal-elb:1``` 필수
+* Public Subnet tag에 `kubernetes.io/role/elb:1` 필수
+* Private Subnet tag에 `kubernetes.io/role/internal-elb:1` 필수
 * 두 방식 모두 AWS Load Balancer Controller의 설치가 전제되어야 함. 본 교육에서 생성한 클러스터에는 설치된 상태.
 
 ## Load Balancers
@@ -116,7 +116,7 @@
   ```
 
 ### Creating the load balancer
-```
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -141,11 +141,10 @@ spec:
 * Service Type을 LoadBalancer로 변경하면 Target이 "instance mode"인 NLB가 생성.
 * 트래픽은 타겟에 설정된 포트를 이용하여 인스턴스(워커노드)로 연결되고 ```kube-proxy```는 이 트래픽을 개별 파드로 포워딩
 * NL의 타켓은 모든 워커노드 (3개)로 표시되나, 실제 파드는 1개만 배포된 상태
-* ```kube-proxy```는 자체 iptable을 참조하여 파드가 있는 노드로 트래픽을 포워딩
-
-```
-kubectl get svc -n ui ui-nlb | tail -n 1 | awk '{ print "UI URL = http://"$4 }'
-```
+* `kube-proxy`는 자체 iptable을 참조하여 파드가 있는 노드로 트래픽을 포워딩
+  ```sh
+  kubectl get svc -n ui ui-nlb | tail -n 1 | awk '{ print "UI URL = http://"$4 }'
+  ```
 
 ### IP mode
 ![Exposing service](https://www.eksworkshop.com/assets/images/ip-mode-5a2f1be81ebf0ed8c08f825bfb1394c6.png)
