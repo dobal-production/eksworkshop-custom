@@ -68,3 +68,5 @@ kubectl apply -k deploy
 
 sleep 20s
 kubectl get ingress kube-ops-view-ingress | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
+
+cd ~/environment/eksworkshop-custom/archive/020_prerequisites
