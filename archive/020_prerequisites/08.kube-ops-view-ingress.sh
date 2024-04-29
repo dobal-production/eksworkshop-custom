@@ -13,12 +13,12 @@ kind: Ingress
 metadata:
     name: "kube-ops-view-ingress"
     annotations:
-      kubernetes.io/ingress.class: alb
       alb.ingress.kubernetes.io/scheme: internet-facing
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/group.name: kube-ops-view
       alb.ingress.kubernetes.io/group.order: '1'
 spec:
+    ingressClassName: alb
     rules:
     - http:
         paths:
