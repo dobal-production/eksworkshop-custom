@@ -1,12 +1,5 @@
 #!/bin/bash
 
-if [ ! -x ${LBC_VERSION} ]
-  then
-    tput setaf 2; echo '${LBC_VERSION} has been set.'
-  else
-    tput setaf 1;echo '${LBC_VERSION} has NOT been set.'
-fi
-
 echo "##### Create IAM OIDC Provider\n"
 eksctl utils associate-iam-oidc-provider \
     --region ${AWS_REGION} \
@@ -34,6 +27,7 @@ kubectl get crd
 
 echo "#####Deploy the Helm chart\n"
 helm repo add eks https://aws.github.io/eks-charts
+helm repo update eks
 
 helm upgrade -i aws-load-balancer-controller \
     eks/aws-load-balancer-controller \
