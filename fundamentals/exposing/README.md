@@ -15,7 +15,7 @@
 * 환경변수(Environment Variables)
   * 파드가 실행될 때, `kubelet`은 각 활성 서비스들을 파드의 환경변수로 추가
   * `Service`보다 `Replica`가 먼저 생성될 경우, 파드의 환경변수에는 추가되지 않음
-  * 파드를 재패보하면 환경변수에 `Service`가 추가됨
+  * 파드를 재배포하면 환경변수에 `Service`가 추가됨
   * catalog 파드의 환경변수 조회
     ```sh
     export catalogpod=$(kubectl get pod -n catalog -l app.kubernetes.io/component=service -o jsonpath='{.items[0].metadata.name}')
@@ -32,7 +32,7 @@
     ```
   * 파드 삭제
     ```
-    kubeclt delete po -n catalog curl
+    kubectl delete po -n catalog curl
     ```
 
 ### ClusterIP
@@ -85,12 +85,12 @@
 ## Load Balancers
 ### 개요
 * 클라우드 플랫폼에서 제공되는 로드 밸런서를 프로비저닝하여 pod에 연결
-* `service.beta.kubernetes.io/aws-load-balancer-scheme` 어노테이션으로 public/private 서브넷 선택
+* [service.beta.kubernetes.io/aws-load-balancer-scheme](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.8/guide/service/annotations/#lb-scheme) 어노테이션으로 public/private 서브넷 선택
 * NodePort 서비스를 생성하고, 외부의 로드밸런서를 연결
 * 컨테이너 내부 dns에서는 ClusterIP가 자동할당 (default)
 * loadBalancerIP 자동/지정 가능
 * loadBalancerSourceRanges도 설정 가능하지만, 로드 밸런서에서 하는 것이 좋음
-* 로드 밸런서 생성에 수 분이 걸림
+* 로드 밸런서 생성에 수 분(min)이 걸림
 * `Service` 예시
   ```yaml
   apiVersion: v1
@@ -98,7 +98,7 @@
   metadata:
     name: ui-nlb
     annotations:
-      service.beta.kubernetes.io/aws-load-balancer-type: external
+      service.beta.kubernetes.io/aws-load-balancer-type: external # nlb-ip or external
       service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing # internal(default) or internet-facing
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
     namespace: ui
@@ -116,49 +116,61 @@
   ```
 
 ### Creating the load balancer
-```yaml
+* Service Type을 LoadBalancer로 변경하면 Target이 "instance mode"인 NLB가 생성.
+* 트래픽은 타겟에 설정된 포트를 이용하여 인스턴스(워커노드)로 연결되고 ```kube-proxy```는 이 트래픽을 개별 파드로 포워딩
+* NLB의 타켓은 모든 워커노드 (3개)로 표시되나, 실제 파드는 1개만 배포된 상태
+* `kube-proxy`는 자체 iptable을 참조하여 파드가 있는 노드로 트래픽을 포워딩
+  ```sh
+  kubectl apply -k ~/environment/eks-workshop/modules/exposing/load-balancer/nlb
+  kubectl get service -n ui
+  kubectl get svc -n ui ui-nlb | tail -n 1 | awk '{ print "UI URL = http://"$4 }'
+  ```
+
+### 실습 : CLB상태인 Kube-Ops-View를 NLB로 고쳐보기
+<details>
+<summary>service.yaml 코드 보기</summary>
+
+```
 apiVersion: v1
 kind: Service
 metadata:
-  name: ui-nlb
+  labels:
+    application: kube-ops-view
+    component: frontend
+  name: kube-ops-view
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-type: external
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
-  namespace: ui
 spec:
+  selector:
+    application: kube-ops-view
+    component: frontend
   type: LoadBalancer
   ports:
-    - port: 80
-      targetPort: 8080
-      name: http
-  selector:
-    app.kubernetes.io/name: ui
-    app.kubernetes.io/instance: ui
-    app.kubernetes.io/component: service
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
 ```
-
-* Service Type을 LoadBalancer로 변경하면 Target이 "instance mode"인 NLB가 생성.
-* 트래픽은 타겟에 설정된 포트를 이용하여 인스턴스(워커노드)로 연결되고 ```kube-proxy```는 이 트래픽을 개별 파드로 포워딩
-* NL의 타켓은 모든 워커노드 (3개)로 표시되나, 실제 파드는 1개만 배포된 상태
-* `kube-proxy`는 자체 iptable을 참조하여 파드가 있는 노드로 트래픽을 포워딩
-  ```sh
-  kubectl get svc -n ui ui-nlb | tail -n 1 | awk '{ print "UI URL = http://"$4 }'
-  ```
+</details>
 
 ### IP mode
 ![Exposing service](https://www.eksworkshop.com/assets/images/ip-mode-5a2f1be81ebf0ed8c08f825bfb1394c6.png)
-* NLB의 Target을 "IP mode"로도 변경 가능하면 트래픽이 개별 파드로 직접 흐르고, 워커노드에서 발생하는 부차적인 네트워크 홉도 제거할 수 있음.
+* NLB의 Target을 "IP mode"로도 변경 가능하면 트래픽이 개별 파드로 직접 흐르고, 워커노드에서 발생하는 부차적인 kube-proxy의 네트워크 홉도 제거할 수 있음.
 
 * IP mode의 장점
     * 인바운드 연결을 위한 보다 효율적인 네트워크 경로를 생성하여 EC2 워커 노드에서 kube-proxy를 우회.
     * `.spec.externalTrafficPolicy`와 다양한 구성 옵션의 장단점 같은 측면을 고려할 필요가 없음
     * Amazon EC2와 AWS Fargate 상에서 동작하는 파드에 모두 사용 가능 
 
+* 실습 전에 ui pod의 ip address 확인
+
+  ```kubectl describe pod -n ui $(kubectl get pod -n ui | tail -n 1 | awk '{print $1}')```
+
 ## Ingress
 * 쿠버네티스 인그레스는 클러스터에서 실행 중인 쿠버네티스 서비스에 대한 외부 또는 내부 HTTP(S) 액세스를 관리할 수 있는 API 리소스
 * ALB는 호스트 또는 경로 기반 라우팅, TLS(전송 계층 보안) termination, 웹소켓, HTTP/2, AWS WAF(웹 애플리케이션 방화벽) 통합, 통합 액세스 로그, 상태 확인 등 다양한 기능을 지원
-* * 서비스 타입을 LoadBalancer 타입으로 할 경우, 서비스마다 LB가 생기고, 엔드포인트도 각각 생기며, SSL 인증서도 각각 설치해야 함
+* 서비스 타입을 LoadBalancer 타입으로 할 경우, 서비스마다 LB가 생기고, 엔드포인트도 각각 생기며, SSL 인증서도 각각 설치해야 함
 * `Ingress`를 이용하면 단일 endpoint url로 쌉가능
 * 라우팅 정의와 보안 연결 등과 같은 세부 설정은 인그레스에 의해 수행
 * Ingress는 Layer 7 레벨의 오브젝트, http/https 이외의 서비스를 외부로 노출할 경우에는 NordPort, LoadBalancer 타입을 사용
@@ -182,15 +194,43 @@ spec:
 * rule에 매칭되지 않을 경우 default backend로 보내짐. → 설정했을 경우.
 
 ### Creating the ingress  
+* base-application의 ui service 
+  ```yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: ui
+    labels:
+      helm.sh/chart: ui-0.0.1
+      app.kubernetes.io/name: ui
+      app.kubernetes.io/instance: ui
+      app.kubernetes.io/component: service
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/created-by: eks-workshop
+  spec:
+    type: ClusterIP
+    ports:
+      - port: 80
+        targetPort: http
+        protocol: TCP
+        name: http
+    selector:
+      app.kubernetes.io/name: ui
+      app.kubernetes.io/instance: ui
+      app.kubernetes.io/component: service
+  ```
 * Ingress로 생성된 ALB URL 얻기 
     ```sh
     kubectl get ingress -n ui | tail -n 1 | awk '{print "ALB = http://"$4 }'
     ```
 
+### 실습 : CLB상태인 Kube-Ops-View를 ALB로 고쳐보기
+
 ### Multiple Ingress pattern
 * 여러 Ingress를 하나의 그룹으로 만들어주는 IngressGroup  
 * 컨트롤러는 IngressGrup에 있는 모든 Ingress의 규칙들을 합쳐서 하나의 ALB에 통합
-* 앞서 만들었던 Ingress를 수정하기 때문에 기존 ALB는 삭제되고, 새로운 ALB가 생성 
+* 앞서 만들었던 Ingress를 수정하기 때문에 기존 ALB는 삭제되고, 새로운 ALB가 생성됨 
+* 콘솔에서도 ALB의 상황을 볼 수 있음
 
 ```sh
 ALB_ARN=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `k8s-retailappgroup`) == `true`].LoadBalancerArn' | jq -r '.[0]')  

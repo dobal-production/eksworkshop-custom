@@ -18,6 +18,7 @@ metadata:
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/group.name: kube-ops-view
       alb.ingress.kubernetes.io/group.order: '1'
+      alb.ingress.kubernetes.io/healthcheck-path: "/"
 spec:
     rules:
     - http:
@@ -39,8 +40,7 @@ metadata:
     application: kube-ops-view
     component: frontend
   name: kube-ops-view
-  annotations:
-    alb.ingress.kubernetes.io/healthcheck-path: "/"
+    
 spec:
   selector:
     application: kube-ops-view
@@ -50,6 +50,16 @@ spec:
   - port: 80
     protocol: TCP
     targetPort: 8080
+EOF
+
+cat << EOF > deploy/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-ops-view
+  labels:
+    application: kube-ops-view
+    component: frontend
 EOF
 
 cat << EOF > deploy/kustomization.yaml
@@ -62,7 +72,10 @@ resources:
   - redis-deployment.yaml
   - redis-service.yaml
   - ingress.yaml
+  - namespace.yaml
 EOF
+
+
 
 kubectl apply -k deploy
 
