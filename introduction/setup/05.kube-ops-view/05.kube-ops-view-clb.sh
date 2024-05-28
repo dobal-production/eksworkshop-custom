@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# shellcheck disable=SC2164
 cd ~/environment/eks-workshop/base-application/
 git clone https://codeberg.org/hjacobs/kube-ops-view.git
 cd kube-ops-view

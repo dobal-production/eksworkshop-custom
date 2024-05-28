@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2164
 cd ~/environment
 
 # Install K8s Tools

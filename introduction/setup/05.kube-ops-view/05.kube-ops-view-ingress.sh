@@ -3,6 +3,7 @@
 # after install aws load balancer controller
 # https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/aws-load-balancer-controller.html
 
+# shellcheck disable=SC2164
 cd ~/environment/eks-workshop/base-application/
 git clone https://codeberg.org/hjacobs/kube-ops-view.git
 cd kube-ops-view
