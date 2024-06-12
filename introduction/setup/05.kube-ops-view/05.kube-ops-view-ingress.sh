@@ -12,25 +12,26 @@ cat << EOF > deploy/ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-    name: "kube-ops-view-ingress"
-    annotations:
-      kubernetes.io/ingress.class: alb
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      alb.ingress.kubernetes.io/target-type: ip
-      alb.ingress.kubernetes.io/group.name: kube-ops-view
-      alb.ingress.kubernetes.io/group.order: '1'
-      alb.ingress.kubernetes.io/healthcheck-path: "/"
+  name: "kube-ops-view-ingress"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: kube-ops-view
+    alb.ingress.kubernetes.io/group.order: '1'
+    alb.ingress.kubernetes.io/healthcheck-path: "/"
 spec:
-    rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: "kube-ops-view"
-                port:
-                  number: 80
+  ingressClassName: alb
+  rules:
+  - http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: "kube-ops-view"
+              port:
+                number: 80
 EOF
 
 cat << EOF > deploy/service.yaml
