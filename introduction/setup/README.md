@@ -7,6 +7,7 @@
 ## Switch cluster context
 ```
 kubectl config get-contexts
+kubectl config rename-context [context_name] [new_context_name]
 kubectl config use-context [context_name]
 kubectl config delete-context [context_name]
 ```
