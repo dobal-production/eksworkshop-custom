@@ -114,5 +114,8 @@ kubectl config delete-context [context_name]
 * 파일에 오류가 있을 경우 다시 삭제하고 생성해주면 됨.
 
     ```shell
-    aws eks update-kubeconfig --name [CLUSTER-NAME] --region $AWS_REGION
+    rm -rf /home/ec2-user/.kube/config
+    aws eks update-kubeconfig --name eks-workshop --region $AWS_REGION
     ```
+## Deploying our first component
+* [Quiz] Replicas를 늘린 후, 동일한 명령어를 반복해서 실행하면 어떤 변화가 있을까요?
