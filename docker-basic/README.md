@@ -1,3 +1,22 @@
+## Docker 환경정보 보기
+```shell
+docker info
+```
+```yaml
+ ...
+ Kernel Version: 6.1.92-99.174.amzn2023.x86_64
+ Operating System: Amazon Linux 2023.5.20240708
+ OSType: linux
+ Architecture: x86_64
+ CPUs: 2
+ Total Memory: 7.59GiB
+ Name: ip-10-1-0-59.ap-northeast-2.compute.internal
+ ID: 2ac6b2c6-c38f-42a2-961f-7527fa76d408
+ Docker Root Dir: /var/lib/docker
+ Debug Mode: false
+ Experimental: false
+ Insecure Registries:
+```
 ## Container Image 만들기
 ### Dockerfile
 ```shell
@@ -36,6 +55,8 @@ docker inspect [container_id] --format "{{.LogPath}}"
 sudo cat [log_path]
 ```
 ### Remove Container & Image
+* 현재 실행중인 컨테이너는 삭제할 수 없음
+* 이미지가 사용된 컨테이너(실행 상태와 상관 없음)가 있으면 이미지는 삭제할 수 없음
 ```shell
 docker stop test-ngix
 ```
