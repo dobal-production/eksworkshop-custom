@@ -118,4 +118,43 @@ kubectl config delete-context [context_name]
     aws eks update-kubeconfig --name eks-workshop --region $AWS_REGION
     ```
 ## Deploying our first component
+### Scaling (명령형)
+```shell
+kubectl scale -n catalog --replicas=3 deployment/catalog
+```
+```shell
+kubectl get pod -n catalog
+```
+
+### Scaling (선언형)
+* base-application/catalog/deployment.yaml의 replicas를 아래와 같이 수정 후 저장
+  ```yaml
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: catalog
+    labels:
+      app.kubernetes.io/created-by: eks-workshop
+      app.kubernetes.io/type: app
+  spec:
+    replicas: 3
+  ```
+* 적용
+  ```shell
+  kubectl apply -k ~/environment/eks-workshop/base-application/catalog
+  ```
+  ```shell
+  kubectl get pod -n catalog
+  ```
 * [Quiz] Replicas를 늘린 후, 동일한 명령어를 반복해서 실행하면 어떤 변화가 있을까요?
+
+## Other components
+```shell
+kubectl apply -k ~/environment/eks-workshop/base-application
+
+kubectl wait --for=condition=Ready --timeout=180s pods \
+  -l app.kubernetes.io/created-by=eks-workshop -A
+```
+```shell
+kubectl get namespaces -l app.kubernetes.io/created-by=eks-workshop
+```
