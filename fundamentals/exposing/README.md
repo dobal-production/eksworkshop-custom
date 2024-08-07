@@ -5,6 +5,10 @@
 * 컨테이너가 사용하는 포트를 신중하게 조정하거나 동적으로 할당해야 함
 * 클러스터 내의 파드들은 NAT 없이 서로 통신 가능
 
+![Exposing service](../../images/service-02.png)
+![Exposing service](../../images/service-03.png)
+![Exposing service](../../images/service-04.png)
+![Exposing service](../../images/service-05.png)
 ### Service
 * 파드가 업데이트 되거나 새로 생성될 경우 ip도 새로 할당 받음
 * 파드들을 논리적으로 묶어서 `Service`로 만들 수 있음
@@ -104,7 +108,8 @@
     namespace: ui
   spec:
     type: LoadBalancer
-    loadBalancerIP: xxx.xxx.xxx.xxx #자동할당, 지정가능
+    #자동할당, 지정가능
+    loadBalancerIP: xxx.xxx.xxx.xxx 
     ports:
     - name: "http-port"
       protocol: "TCP"
@@ -155,17 +160,19 @@ spec:
 </details>
 
 ### IP mode
-![Exposing service](https://www.eksworkshop.com/assets/images/ip-mode-5a2f1be81ebf0ed8c08f825bfb1394c6.png)
+![Exposing service](https://www.eksworkshop.com/assets/images/ip-mode-c76de89334d6bde7f3cd18ec49350acd.webp)
 * NLB의 Target을 "IP mode"로도 변경 가능하면 트래픽이 개별 파드로 직접 흐르고, 워커노드에서 발생하는 부차적인 kube-proxy의 네트워크 홉도 제거할 수 있음.
 
 * IP mode의 장점
-    * 인바운드 연결을 위한 보다 효율적인 네트워크 경로를 생성하여 EC2 워커 노드에서 kube-proxy를 우회.
+    * 인바운드 연결을 위한 보다 효율적인 네트워크 경로를 생성하여 EC2 워커 노드에서 kube-proxy를 우회
     * `.spec.externalTrafficPolicy`와 다양한 구성 옵션의 장단점 같은 측면을 고려할 필요가 없음
     * Amazon EC2와 AWS Fargate 상에서 동작하는 파드에 모두 사용 가능 
 
 * 실습 전에 ui pod의 ip address 확인
 
-  ```kubectl describe pod -n ui $(kubectl get pod -n ui | tail -n 1 | awk '{print $1}')```
+  ```
+  kubectl describe pod -n ui $(kubectl get pod -n ui | tail -n 1 | awk '{print $1}')
+  ```
 
 ## Ingress
 * 쿠버네티스 인그레스는 클러스터에서 실행 중인 쿠버네티스 서비스에 대한 외부 또는 내부 HTTP(S) 액세스를 관리할 수 있는 API 리소스
@@ -180,7 +187,6 @@ spec:
 * 라우팅 규칙에 맞지 않는 트래픽은 default backend로 보내짐
 * 인그레스를 동작시키기 위해서는 인그레스 컨트롤(ingress controller)러가 있어야 함
 * ingress controller에 종속적인 옵션들은 annotation에 표기
-* ingress가 동작하기 위해서는 ingress controller가 필요
 * ingress controller는 kube-controller-manager에 의해 자동으로 시작되지 않음
 * Ingress → AWS Load Balancer Controller를 프로비저닝(controller는 pod로 동작함)
 * Service → Network Load Balancer를 프로비저닝
@@ -194,35 +200,63 @@ spec:
 * rule에 매칭되지 않을 경우 default backend로 보내짐. → 설정했을 경우.
 
 ### Creating the ingress  
-* base-application의 ui service 
-  ```yaml
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: ui
-    labels:
-      helm.sh/chart: ui-0.0.1
-      app.kubernetes.io/name: ui
-      app.kubernetes.io/instance: ui
-      app.kubernetes.io/component: service
-      app.kubernetes.io/managed-by: Helm
-      app.kubernetes.io/created-by: eks-workshop
-  spec:
-    type: ClusterIP
-    ports:
-      - port: 80
-        targetPort: http
-        protocol: TCP
-        name: http
-    selector:
-      app.kubernetes.io/name: ui
-      app.kubernetes.io/instance: ui
-      app.kubernetes.io/component: service
-  ```
-* Ingress로 생성된 ALB URL 얻기 
-    ```sh
-    kubectl get ingress -n ui | tail -n 1 | awk '{print "ALB = http://"$4 }'
-    ```
+#### ingress.yaml
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ui
+  namespace: ui
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health/liveness
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ui
+                port:
+                  number: 80
+```
+#### base-application의 ui service 
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  labels:
+    helm.sh/chart: ui-0.0.1
+    app.kubernetes.io/name: ui
+    app.kubernetes.io/instance: ui
+    app.kubernetes.io/component: service
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/created-by: eks-workshop
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: ui
+    app.kubernetes.io/instance: ui
+    app.kubernetes.io/component: service
+```
+#### Ingress 배포
+```shell
+kubectl apply -k ~/environment/eks-workshop/modules/exposing/ingress/creating-ingress
+```
+#### Ingress로 생성된 ALB URL 얻기 
+```sh
+kubectl get ingress -n ui | tail -n 1 | awk '{print "ALB = http://"$4 }'
+```
 
 ### 실습 : CLB상태인 Kube-Ops-View를 ALB로 고쳐보기
 
@@ -231,11 +265,19 @@ spec:
 * 컨트롤러는 IngressGrup에 있는 모든 Ingress의 규칙들을 합쳐서 하나의 ALB에 통합
 * 앞서 만들었던 Ingress를 수정하기 때문에 기존 ALB는 삭제되고, 새로운 ALB가 생성됨 
 * 콘솔에서도 ALB의 상황을 볼 수 있음
+* 하나의 Ingress에서 서비스별 path로 분기
+* `/catalogue` Catalog 서비스로 분기
+* `/` UI 서비스로 분기
+* 그 외에는 404에러 페이지
 
 ```sh
 ALB_ARN=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `k8s-retailappgroup`) == `true`].LoadBalancerArn' | jq -r '.[0]')  
 TARGET_GROUP_ARN=$(aws elbv2 describe-target-groups --load-balancer-arn $ALB_ARN | jq -r '.TargetGroups[0].TargetGroupArn')  
 aws elbv2 describe-target-health --target-group-arn $TARGET_GROUP_ARN
-
 ```
 
+#### catalog pod의 로그 보기
+```shell
+export catalogpod=$(kubectl get pod -n catalog -l app.kubernetes.io/component=service -o jsonpath='{.items[].metadata.name}')
+kubectl logs -n catalog $catalogpod
+```
