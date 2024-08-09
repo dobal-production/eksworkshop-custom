@@ -1,19 +1,50 @@
 ### Install with CLB (Easy, Not recommend)
+* type을 LoadBalancer로 변경하면 CLB가 생성됨
+  ```shell
+  cd ~/environment
+  git clone https://codeberg.org/hjacobs/kube-ops-view.git
+  cd kube-ops-view
+  sed -i 's/ClusterIP/LoadBalancer/g' deploy/service.yaml
+  kubectl apply -k deploy
+  
+  sleep 20s
+  kubectl get svc kube-ops-view | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
+  ```
 
-* 05.kube-ops-view-clb.sh
-    ```shell
-    #!/bin/bash
-    
-    # shellcheck disable=SC2164
-    cd ~/environment
-    git clone https://codeberg.org/hjacobs/kube-ops-view.git
-    cd kube-ops-view
-    sed -i 's/ClusterIP/LoadBalancer/g' deploy/service.yaml
-    kubectl apply -k deploy
-    
-    sleep 20s
-    kubectl get svc kube-ops-view | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
-    ```
+### Install with NLB (Easy)
+* annotation을 이용하여 clb대신 nlb를 생성할 수 있음
+  ```shell
+  cd ~/environment
+  git clone https://codeberg.org/hjacobs/kube-ops-view.git
+  cd kube-ops-view
+  
+  cat << EOF > deploy/service.yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      application: kube-ops-view
+      component: frontend
+    name: kube-ops-view
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  spec:
+    selector:
+      application: kube-ops-view
+      component: frontend
+    type: LoadBalancer
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 8080
+  EOF
+  
+  kubectl apply -k deploy
+      
+  sleep 20s
+  kubectl get svc kube-ops-view | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
+  ```
+
 ### Install with ingress/ALB (Recommend)
 * [AWS load balancer controller](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/aws-load-balancer-controller.html) 설치 필수
 * subnet에 관련 tag가 설정되어 있어야 함 ([VPC 및 Subnet 요구사항](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/network_reqs.html))
