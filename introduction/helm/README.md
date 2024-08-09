@@ -82,15 +82,15 @@ tar zxvf ./nginx-18.1.7.tgz
 ### myapp chart 생성
 ```shell
 helm create myapp
-cd myapp
-tree .
+tree myapp
 ```
 ```shell
-rm -rf templates/*.yaml 
-rm -rf templates/*.txt
-rm -rf templates/*.tpl
-rm -rf templates/tests
-tree .
+rm -rf myapp/templates/*.yaml 
+rm -rf myapp/templates/*.txt
+rm -rf myapp/templates/*.tpl
+rm -rf myapp/templates/tests
+rm -rf myapp/Chart.yaml
+tree myapp
 ```
 
 #### deployment.yaml 파일 생성
@@ -143,7 +143,7 @@ EOF
 ```
 #### chart.yaml 파일 생성
 ```shell
-cat << EOF > ./myapp/chart.yaml
+cat << EOF > myapp/Chart.yaml
 apiVersion: v2
 name: myapp
 description: My first helm app
