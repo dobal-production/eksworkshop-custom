@@ -55,6 +55,8 @@ spec:
     - name: my-emptydir-volume
       emptyDir: {}
 EOF
+
+kubectl apply -f emptydir-pod.yaml
 ```
 ```shell
 kubectl get pod -n default emptydir-pod.yaml
