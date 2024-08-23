@@ -105,7 +105,7 @@ spec:
     - ReadWriteOnce
   awsElasticBlockStore:
     fsType: ext4
-    volumeID: "{$VOLUME_ID}"
+    volumeID: "$VOLUME_ID"
 EOF
 ```
 ```shell
