@@ -1,5 +1,5 @@
 ## K8S storage overview
-![PV Lifecycle](images/pv-lifecycle.png)
+![PV Lifecycle](../../images/pv-lifecycle.png)
 
 ### Local Volume
 * hostPath : 호스트와 볼륨을 공유하기 위함
@@ -162,7 +162,7 @@ kubectl apply -f ebs-pvc-pod.yaml
   kubectl logs -n catalog catalog-mysql-0 --tail 5
   kubectl get pod -n catalog catalog-mysql-0 -o jsonpath='{.metadata.labels}{"\n"}' | jq
   ```  
-  <img src="https://www.eksworkshop.com/assets/images/mysql-emptydir-1d1e53765874bd02a2692bdb8617940d.webp" width="300">
+  <img src="../../images/mysql-ebs.webp">
 
 #### Volumes - emptyDir
   * 파드의 볼륨은 파드 내의 컨테이너들 모두 읽기/쓰기가 가능
