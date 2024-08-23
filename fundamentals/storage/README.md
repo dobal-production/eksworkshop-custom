@@ -106,6 +106,14 @@ spec:
   awsElasticBlockStore:
     fsType: ext4
     volumeID: "$VOLUME_ID"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values:
+          - us-west-2a
 EOF
 ```
 ```shell
