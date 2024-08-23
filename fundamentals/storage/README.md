@@ -33,7 +33,7 @@
 * 다른 컨테이너에서 test.html을 확인
 ```yaml
 cd ~/environment
-  cat << EOF > empty-dir-pod
+  cat << EOF > empty-dir-pod.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -57,7 +57,7 @@ spec:
 EOF
 ```
 ```shell
-kubectl get pod -n default emptydir-pod
+kubectl get pod -n default emptydir-pod.yaml
 ```
 ```shell
 kubectl exec -it emptydir-pod -c content-creator sh 
@@ -73,7 +73,7 @@ kubectl exec -it emptydir-pod -c apache-webserver sh
 cat /usr/local/apache2/htdocs/test.html
 ```
 ```shell
-kubectl delete -f ./empty-dir-pod 
+kubectl delete -f ./empty-dir-pod.yaml 
 ```
 ### PV, PVC 실습
 #### EBS volume 생성
