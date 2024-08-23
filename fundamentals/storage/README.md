@@ -131,6 +131,8 @@ kind: Pod
 metadata:
   name: ebs-pod
 spec:
+  nodeSelector:
+    topology.kubernetes.io/zone: us-west-2a
   containers:
     - name: ebs-mount-container
       image: httpd:2
