@@ -99,7 +99,7 @@ metadata:
   name: ebs-pv
 spec:
   capacity:
-    storage: 10Gi
+    storage: 5Gi
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
