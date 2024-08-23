@@ -59,7 +59,7 @@ EOF
 kubectl apply -f emptydir-pod.yaml
 ```
 ```shell
-kubectl get pod -n default emptydir-pod.yaml
+kubectl get pod -n default emptydir-pod
 ```
 ```shell
 kubectl exec -it emptydir-pod -c content-creator sh 
