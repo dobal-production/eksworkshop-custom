@@ -157,7 +157,7 @@ EOF
 kubectl apply -f ebs-pvc-pod.yaml
 ```
 ```shell
-ubectl exec -it ebs-pod /bin/bash
+kubectl exec -it ebs-pod /bin/bash
 ```
 * pvc의 조건들과 일치할 때만 pv 연결
 
