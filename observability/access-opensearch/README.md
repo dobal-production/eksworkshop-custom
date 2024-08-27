@@ -98,6 +98,7 @@ aws logs describe-subscription-filters \
 ### pod logging
 <img src="../../images/opensearch-03.webp">
 * Fluent Bit의 데몬셋을 배포하여 OpenSearch로 로그 전송
+
 ```shell
 helm repo add eks https://aws.github.io/eks-charts
 helm upgrade fluentbit eks/aws-for-fluent-bit --install \
