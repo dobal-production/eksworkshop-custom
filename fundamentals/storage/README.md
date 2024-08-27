@@ -177,7 +177,7 @@ kubectl exec -it ebs-pod /bin/bash
   kubectl logs -n catalog catalog-mysql-0 --tail 5
   kubectl get pod -n catalog catalog-mysql-0 -o jsonpath='{.metadata.labels}{"\n"}' | jq
   ```  
-  <img src="../../images/mysql-ebs.webp">
+  <img src="../../images/ebs-01.webp" width="300">
 
 #### Volumes - emptyDir
   * 파드의 볼륨은 파드 내의 컨테이너들 모두 읽기/쓰기가 가능
@@ -214,7 +214,7 @@ kubectl exec -it ebs-pod /bin/bash
 * volumeClaimTemplates : Amazon EBS, PV, PVC를 모두 자동으로 생성
 
 ### StatefulSet with EBS Volume
-<img src="https://www.eksworkshop.com/assets/images/mysql-ebs-7a01f1d72ac301e3778d0490ce76e182.webp" width="600">
+<img src="../../images/ebs-02.webp" width="600">
 
 * catalog component에서 EBS volume을 이용하는 신규 MySQL용 StatefulSet을 생성
 * 생성된 statefule에 대한 service 생성
@@ -230,6 +230,8 @@ kubectl exec -it ebs-pod /bin/bash
 * 컨테이너 빌드시 `/usr/share/nginx/html/assets` 폴더에 이미지가 복사됨
 * assets의 replicas=2로 한 뒤, 첫 번째 파드에 새로운 이미지를 생성
 * 두 번째 파드에는 해당 이미지가 없다는 것을 보여줌
+
+<img src="../../images/efs-01.webp" width="600">
 
 ### EFS CSI Driver
 * Amazon EBS와 같이 클러스터에서 AWS 리소스를 핸들링하려면 드라이버와 권한이 필요
