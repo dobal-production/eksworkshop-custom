@@ -33,7 +33,7 @@
 * 다른 컨테이너에서 test.html을 확인
 ```yaml
 cd ~/environment
-  cat << EOF > empty-dir-pod.yaml
+  cat << EOF > emptydir-pod.yaml
 apiVersion: v1
 kind: Pod
 metadata:
