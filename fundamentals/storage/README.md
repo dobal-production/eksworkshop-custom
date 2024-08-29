@@ -159,7 +159,87 @@ kubectl apply -f ebs-pvc-pod.yaml
 ```shell
 kubectl exec -it ebs-pod /bin/bash
 ```
+```shell
+df -h
+```
 * pvc의 조건들과 일치할 때만 pv 연결
+
+### StorageClass & Dynamic Provisioning
+* PV를 항상 미리 생성하고, yaml에 기입해야 사용할 수 있음, 준비가 안되다면 에러
+* PVC에 기술된 조건과 일치하는 PV가 없을 경우, 자동으로 PV 생성 및 AWS EBS도 함께 생성하는 동적 프로비저닝 쌉가능
+* volumeClaimTemplates : Amazon EBS, PV, PVC를 모두 자동으로 생성
+
+
+1. StorageClass 생성
+```shell
+cd ~/environment
+mkdir ebs-sc
+cd ebs-sc
+cat << EOF > ebs-sc.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: gp3
+  fsType: ext4
+EOF
+
+kubectl apply -f ebs-sc.yaml
+```
+2. PersistanceVolumeClaim(PVC) 생성
+```shell
+cat << EOF > ebs-claim.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 4Gi
+EOF
+
+kubectl apply -f ebs-claim.yaml  
+    
+```
+3. Pod 생성
+```shell
+cat << EOF > ebs-sc-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod
+spec:
+  containers:
+  - name: app-container
+    image: nginx
+    volumeMounts:
+    - name: storage-volume
+      mountPath: /usr/share/nginx/html
+  volumes:
+  - name: storage-volume
+    persistentVolumeClaim:
+      claimName: ebs-claim
+EOF
+
+kubectl apply -f ebs-sc-pod.yaml
+```
+
+4. 확인
+```shell
+kubectl get sc
+kubectl get pvc
+kubectl get pods
+```
+```shell
+kubectl exec -it app-pod /bin/bash
+```
 
 ## Amazon EBS
 ### StatefulSets
@@ -207,11 +287,6 @@ kubectl exec -it ebs-pod /bin/bash
 * EBS csi driver도 pod로 실행되며, EBS API 호출을 위한 권한이 있어야 함
 * Amazon EBS CSI driver는 EKS 클러스터에서 EBS를 PV로 사용할 수 있도록 해줌
 * 클러스터에 add-on으로 설치, 각 노드에서 데몬셋으로 동작
-
-### StorageClass & Dynamic Provisioning
-* PV를 항상 미리 생성하고, yaml에 기입해야 사용할 수 있음, 준비가 안되다면 에러
-* PVC에 기술된 조건과 일치하는 PV가 없을 경우, 자동으로 PV 생성 및 AWS EBS도 함께 생성하는 동적 프로비저닝 쌉가능
-* volumeClaimTemplates : Amazon EBS, PV, PVC를 모두 자동으로 생성
 
 ### StatefulSet with EBS Volume
 <img src="../../images/ebs-02.webp" width="600">
