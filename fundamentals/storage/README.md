@@ -24,7 +24,8 @@
 ### Access Mode
 * ReadWriteMany : 1:N 마운트 가능, 읽기/쓰기 가능
 * ReadOnlyMany : 1:N 마운트 가능, 읽기 전용
-* ReadWriteOnce : 1:1 마운트만 가능, 읽기/쓰기 가능 (EBS 연결시 등에 사용)
+* ReadWriteOnce : 동일 노드의 pod들이 마운트 가능, 읽기/쓰기 가능
+* ReadWriteOncePod : 1:1 마운트만 가능, 읽기/쓰기 가능
 
 ### Volume 실습
 * 두개의 컨테이너를 가지는 pod 생성
@@ -88,6 +89,7 @@ export VOLUME_ID=$(aws ec2 create-volume \
     --query 'VolumeId' \
     --output text)
 ```
+#### 생성된 EBS Volume을 사용하는 PersistenceVolume(PV) 생성
 ```yaml
 cd ~/environment
 mkdir ebs-pv-pod
@@ -120,6 +122,7 @@ EOF
 kubectl apply -f ebs-pv.yaml
 kubectl get pv -n default
 ```
+#### 생성된 pv를 사용하는 pod 생성
 ```yaml
 cat << EOF > ebs-pvc-pod.yaml
 apiVersion: v1
@@ -162,19 +165,18 @@ kubectl exec -it ebs-pod /bin/bash
 ```shell
 df -h
 ```
-* pvc의 조건들과 일치할 때만 pv 연결
 
 ### StorageClass & Dynamic Provisioning
 * PV를 항상 미리 생성하고, yaml에 기입해야 사용할 수 있음, 준비가 안되다면 에러
 * PVC에 기술된 조건과 일치하는 PV가 없을 경우, 자동으로 PV 생성 및 AWS EBS도 함께 생성하는 동적 프로비저닝 쌉가능
 * volumeClaimTemplates : Amazon EBS, PV, PVC를 모두 자동으로 생성
 
-
-1. StorageClass 생성
+#### StorageClass 생성
 ```shell
 cd ~/environment
 mkdir ebs-sc
 cd ebs-sc
+
 cat << EOF > ebs-sc.yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -189,7 +191,7 @@ EOF
 
 kubectl apply -f ebs-sc.yaml
 ```
-2. PersistanceVolumeClaim(PVC) 생성
+#### PersistenceVolumeClaim(PVC) 생성
 ```shell
 cat << EOF > ebs-claim.yaml
 apiVersion: v1
@@ -208,7 +210,7 @@ EOF
 kubectl apply -f ebs-claim.yaml  
     
 ```
-3. Pod 생성
+#### Pod 생성
 ```shell
 cat << EOF > ebs-sc-pod.yaml
 apiVersion: v1
@@ -231,7 +233,7 @@ EOF
 kubectl apply -f ebs-sc-pod.yaml
 ```
 
-4. 확인
+#### 확인
 ```shell
 kubectl get sc
 kubectl get pvc
