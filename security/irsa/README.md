@@ -77,7 +77,7 @@ kubectl rollout status -n carts deployment/carts
 
 ### Verifying DynamoDB Access
 ```shell
-kubectl get service -n ui ui-nlb -o jsonpath="http://{.status.loadBalancer.ingress[*].hostname}"
+kubectl -n ui get service ui-nlb -o jsonpath='http://{.status.loadBalancer.ingress[*].hostname}{"\n"}'
 ```
 ```shell
 # 환경변수 확인
