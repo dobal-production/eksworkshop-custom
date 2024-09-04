@@ -5,6 +5,7 @@
 ### Exploring Secrets
 * K8S Secrets는 암호, 토큰, 키와 같은 민감정보를 저장하는 오브젝트
 * ConfigMap과 유사하지만 base64로 인코딩되어 저장된다는 것이 차이
+* AWS KMS를 이용하여 암호화 가능 
 
 ```shell
 # catalog-db secret
