@@ -29,8 +29,9 @@ vpc:
 
 addons:
 - name: vpc-cni
-  version: 1.14.1
-  configurationValues:  "{\"env\":{\"ENABLE_PREFIX_DELEGATION\":\"true\", \"ENABLE_POD_ENI\":\"true\", \"POD_SECURITY_GROUP_ENFORCING_MODE\":\"standard\"},\"enableNetworkPolicy\": \"true\"}"
+  version: 1.19.2
+  attachPolicyARNs:
+    - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
   resolveConflicts: overwrite
 
 # https://github.com/awslabs/amazon-eks-ami/blob/master/CHANGELOG.md
