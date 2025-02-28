@@ -30,10 +30,6 @@ kubectl completion bash >>  ~/.bash_completion
 . /etc/profile.d/bash_completion.sh
 . ~/.bash_completion
 
-export AWS_REGION=$(curl -s 169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
-echo 'export EKS_CLUSTER_NAME=eks-workshop' >> ~/.bash_profile
-.  ~/.bash_profile
-
 cat ~/.bash_profile
 
 # install eks ctl
