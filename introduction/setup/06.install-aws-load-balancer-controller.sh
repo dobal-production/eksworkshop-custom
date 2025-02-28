@@ -6,8 +6,13 @@ eksctl utils associate-iam-oidc-provider \
     --cluster ${EKS_CLUSTER_NAME} \
     --approve
 
+# https://docs.aws.amazon.com/eks/latest/userguide/lbc-manifest.html    
+export LB_VERSION="v2.11.0"
+export LB_NAME="v2_11_0"
+export CERT_VER="v1.13.5"
+
 echo "#####Create an IAM policy called\n"
-curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.5.4/docs/install/iam_policy.json
+curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/${LB_VERSION}/docs/install/iam_policy.json
 aws iam create-policy \
     --policy-name AWSLoadBalancerControllerIAMPolicy \
     --policy-document file://iam_policy.json
@@ -24,15 +29,16 @@ eksctl create iamserviceaccount \
 echo "#####Install cert-manager\n"
 kubectl apply \
     --validate=false \
-    -f https://github.com/jetstack/cert-manager/releases/download/v1.12.3/cert-manager.yaml
+    -f https://github.com/jetstack/cert-manager/releases/download/${CERT_VER}/cert-manager.yaml
 
 echo "#####Install load balancer controller\n"
-curl -Lo v2_5_4_full.yaml https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.5.4/v2_5_4_full.yaml
-sed -i.bak -e '596,604d' ./v2_5_4_full.yaml
-sed -i.bak -e 's|your-cluster-name|${EKS_CLUSTER_NAME}|' ./v2_5_4_full.yaml
-kubectl apply -f v2_5_4_full.yaml
-curl -Lo v2_5_4_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.5.4/v2_5_4_ingclass.yaml
-kubectl apply -f v2_5_4_ingclass.yaml
+curl -Lo ${LB_NAME}_full.yaml https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/${LB_VERSION}/${LB_NAME}_full.yaml
+sed -i.bak -e '690,698d' ./${LB_NAME}_full.yaml
+sed -i.bak -e "s|your-cluster-name|${EKS_CLUSTER_NAME}|" ./${LB_NAME}_full.yaml
+kubectl apply -f ${LB_NAME}_full.yaml
+
+curl -Lo ${LB_NAME}_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/${LB_VERSION}/${LB_NAME}_ingclass.yaml
+kubectl apply -f ${LB_NAME}_ingclass.yaml
 
 echo "#####verify aws-load-balancer-controller\n"
 kubectl get deployment -n kube-system aws-load-balancer-controller
