@@ -17,6 +17,8 @@ aws iam create-policy \
     --policy-name AWSLoadBalancerControllerIAMPolicy \
     --policy-document file://iam_policy.json
 
+sleep 5
+
 echo "#####Create a IAM role and ServiceAccount\n"
 eksctl create iamserviceaccount \
   --cluster ${EKS_CLUSTER_NAME} \
@@ -26,16 +28,22 @@ eksctl create iamserviceaccount \
   --override-existing-serviceaccounts \
   --approve
 
+sleep 5
+
 echo "#####Install cert-manager\n"
 kubectl apply \
     --validate=false \
     -f https://github.com/jetstack/cert-manager/releases/download/${CERT_VER}/cert-manager.yaml
+
+sleep 10
 
 echo "#####Install load balancer controller\n"
 curl -Lo ${LB_NAME}_full.yaml https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/${LB_VERSION}/${LB_NAME}_full.yaml
 sed -i.bak -e '690,698d' ./${LB_NAME}_full.yaml
 sed -i.bak -e "s|your-cluster-name|${EKS_CLUSTER_NAME}|" ./${LB_NAME}_full.yaml
 kubectl apply -f ${LB_NAME}_full.yaml
+
+sleep 5
 
 curl -Lo ${LB_NAME}_ingclass.yaml https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/${LB_VERSION}/${LB_NAME}_ingclass.yaml
 kubectl apply -f ${LB_NAME}_ingclass.yaml
