@@ -10,7 +10,7 @@ kind: ClusterConfig
 metadata:
   name: eks-demo # 생성할 EKS 클러스터명
   region: ${AWS_REGION} # 클러스터를 생성할 리전
-  version: "1.27"
+  version: "1.31"
 
 vpc:
   cidr: "10.0.0.0/16" # 클러스터에서 사용할 VPC의 CIDR
@@ -62,7 +62,7 @@ mapRoles:
 - groups:
   - system:bootstrappers
   - system:nodes
-  rolearn: arn:aws:iam::909187496839:role/eksctl-eks-demo-nodegroup-node-gro-NodeInstanceRole-9sO4K9pH9Ens
+  rolearn: arn:aws:iam::[ACCOUNT_ID]:role/eksctl-eks-demo-nodegroup-node-gro-NodeInstanceRole-9sO4K9pH9Ens
   username: system:node:{{EC2PrivateDNSName}}
 
 BinaryData
@@ -71,33 +71,20 @@ BinaryData
 Events:  <none>
 ```
 ```shell
-kubectl edit configmap -n kube-system aws-auth
+rolearn=$(aws cloud9 describe-environment-memberships --environment-id=$C9_PID | jq -r '.memberships[].userArn')
+
+echo ${rolearn}
 ```
-```yaml
-# Please edit the object below. Lines beginning with a '#' will be ignored,
-# and an empty file will abort the edit. If an error occurs while saving this file will be
-# reopened with the relevant failures.
-#
-apiVersion: v1
-data:
-  mapRoles: |
-    - groups:
-      - system:bootstrappers
-      - system:nodes
-      rolearn: arn:aws:iam::909187496839:role/eksctl-eks-demo-nodegroup-node-gro-NodeInstanceRole-9sO4K9pH9Ens
-      username: system:node:{{EC2PrivateDNSName}}
-    - groups:
-      - system:masters
-      rolearn: arn:aws:iam::909187496839:role/WSParticipantRole
-      username: admin
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2024-07-29T13:40:59Z"
-  name: aws-auth
-  namespace: kube-system
-  resourceVersion: "1596"
-  uid: 67c1751d-fa32-4090-8f19-b3632cc32ed1
+위 실행 결과에서 assumed-role이라는 문자열이 있다면 아래 추가 실행
+```shell
+assumedrolename=$(echo ${rolearn} | awk -F/ '{print $(NF-1)}')
+rolearn=$(aws iam get-role --role-name ${assumedrolename} --query Role.Arn --output text) 
 ```
+Identity 매핑
+```shell
+eksctl create iamidentitymapping --cluster eks-demo --arn ${rolearn} --group system:masters --username admin
+```
+
 ```shell
 kubectl describe configmap -n kube-system aws-auth 
 ```
