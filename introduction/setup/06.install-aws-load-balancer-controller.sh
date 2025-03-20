@@ -1,15 +1,16 @@
 #!/bin/bash
+# https://docs.aws.amazon.com/eks/latest/userguide/lbc-manifest.html
+export LB_VERSION="v2.11.0"
+export LB_NAME="v2_11_0"
+export CERT_VER="v1.13.5"
+export EKS_CLUSTER_NAME="eks-custom"
+
 echo "https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/aws-load-balancer-controller.html\n"
 echo "##### Create IAM OIDC Provider\n"
 eksctl utils associate-iam-oidc-provider \
     --region ${AWS_REGION} \
     --cluster ${EKS_CLUSTER_NAME} \
     --approve
-
-# https://docs.aws.amazon.com/eks/latest/userguide/lbc-manifest.html    
-export LB_VERSION="v2.11.0"
-export LB_NAME="v2_11_0"
-export CERT_VER="v1.13.5"
 
 echo "#####Create an IAM policy called\n"
 curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/${LB_VERSION}/docs/install/iam_policy.json
