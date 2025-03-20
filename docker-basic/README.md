@@ -20,11 +20,11 @@ docker info
 ## Container Image 만들기
 ### Dockerfile
 ```shell
-cd ~/environment/eksworkshop-custom/docker-basic
+cd ~/environment
 
 cat << EOF > Dockerfile
 FROM nginx:latest
-RUN  echo "<h1> Dobal's Web Page </h1>"  >> index.html
+RUN  echo '<h1> Dobal's Web Page </h1>'  >> index.html
 RUN cp /index.html /usr/share/nginx/html
 EOF
 ```
