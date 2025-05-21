@@ -1,3 +1,10 @@
+## Amazon EKS Auto Mode
+<img src="../images/automode-05.png" />
+<img src="../images/automode-06.png" />
+<img src="../images/automode-07.png" />
+<img src="../images/automode-08.png" />
+<img src="../images/automode-09.png" />
+
 ## Access the cluster
 * 두개의 클러스터가 사전에 프로비저닝 되어 있음
 * 첫 번째 클러스터는 EKS Auto Mode의 기능 핸즈온 용
