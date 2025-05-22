@@ -344,3 +344,149 @@ spec:
   ```
   
   <img src="../../images/automode-14.png" />
+  
+
+## On-Demand & Spot
+* On-Demand, Spot 전용 노드플 생성
+  * 온 디멘드는 단일 가용영역에, 스팟은 나머지 가용영역들을 사용하도록 설정
+
+  ```shell
+  cat << EOF >~/environment/nodepool-ondemandspotsplit.yaml
+  apiVersion: karpenter.sh/v1
+  kind: NodePool
+  metadata:
+    name: ondemand
+    labels:
+      app.kubernetes.io/managed-by: app-team
+  spec:
+    disruption:
+      consolidateAfter: 30s
+      consolidationPolicy: WhenEmptyOrUnderutilized
+    template:
+      metadata:
+        labels:
+          EKSAutoNodePool: OnDemandSpotSplit
+      spec:
+        expireAfter: 336h
+        nodeClassRef:
+          group: eks.amazonaws.com
+          kind: NodeClass
+          name: default
+        requirements:
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values:
+          - c
+          - m
+          - r
+        - key: eks.amazonaws.com/instance-generation
+          operator: Gt
+          values:
+          - "4"
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+          - amd64
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+          - on-demand
+        - key: capacity-spread
+          operator: In
+          values:
+          - "1"   # 단일 가용영역 배포
+        taints:
+        - effect: NoSchedule
+          key: OnDemandSpotSplit
+        terminationGracePeriod: 24h0m0s
+  ---
+  apiVersion: karpenter.sh/v1
+  kind: NodePool
+  metadata:
+    name: spot
+    labels:
+      app.kubernetes.io/managed-by: app-team
+  spec:
+    disruption:
+      consolidateAfter: 30s
+      consolidationPolicy: WhenEmptyOrUnderutilized
+    template:
+      metadata:
+        labels:
+          EKSAutoNodePool: OnDemandSpotSplit
+      spec:
+        expireAfter: 336h
+        nodeClassRef:
+          group: eks.amazonaws.com
+          kind: NodeClass
+          name: default
+        requirements:
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values:
+          - c
+          - m
+          - r
+        - key: eks.amazonaws.com/instance-generation
+          operator: Gt
+          values:
+          - "4"
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+          - amd64
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+          - spot
+        - key: capacity-spread
+          operator: In
+          values:
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+        taints:
+        - effect: NoSchedule
+          key: OnDemandSpotSplit
+        terminationGracePeriod: 24h0m0s
+  EOF
+  
+  kubectl apply -f ~/environment/nodepool-ondemandspotsplit.yaml
+  ```
+
+* 애플리케이션 배포
+  * catalog 콤포넌트를 온디멘드와 스팟 비율 4:1로 배포
+
+  ```shell
+  cat << EOF >~/environment/values-catalog.yaml
+  replicaCount: 5
+    
+  topologySpreadConstraints:
+    - maxSkew: 1
+      minDomains: 5
+      topologyKey: capacity-spread
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: catalog
+  
+  nodeSelector:
+    EKSAutoNodePool: OnDemandSpotSplit
+  tolerations:
+  - key: "OnDemandSpotSplit"
+    operator: "Exists"
+  EOF
+  
+  helm upgrade -f ~/environment/values-catalog.yaml retail-store-app-catalog oci://public.ecr.aws/aws-containers/retail-store-sample-catalog-chart --version ${RETAIL_STORE_APP_HELM_CHART_VERSION} --hide-notes
+  ```
+  ```shell
+  kubectl get node -L karpenter.sh/capacity-type --no-headers | while read node status roles age version capacity_type; do
+  echo "Pods on node $node (Capacity Type: $capacity_type):"
+    kubectl get pods --all-namespaces --field-selector spec.nodeName=$node -l app.kubernetes.io/instance=retail-store-app-catalog
+  echo "-----------------------------------"
+  done
+  ```
+  
+  <img src="../../images/automode-15.png" />
+  <img src="../../images/automode-16.png" />
