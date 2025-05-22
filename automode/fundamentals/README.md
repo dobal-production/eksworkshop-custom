@@ -247,3 +247,100 @@ spec:
   ```shell
   kubectl delete pod load-generator
   ```
+  
+# Customization
+* 기본으로 제공되는 NodePool, NodeClass 외에 사용자 지정 가능
+* 워크로드의 특정에 맞는 네트워크, 컴퓨팅 파워 등을 지정
+
+## Graviton
+* Graviton 인스턴스를 사용하는 NodePool
+  
+  ```shell
+  cat << EOF >~/environment/nodepool-graviton.yaml
+  apiVersion: karpenter.sh/v1
+  kind: NodePool
+  metadata:
+    name: graviton
+    labels:
+      app.kubernetes.io/managed-by: app-team
+  spec:
+    disruption:
+      budgets:
+      - nodes: 10%
+      consolidateAfter: 30s
+      consolidationPolicy: WhenEmptyOrUnderutilized
+    template:
+      metadata: {}
+      spec:
+        expireAfter: 336h
+        nodeClassRef:
+          group: eks.amazonaws.com
+          kind: NodeClass
+          name: default
+        requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+          - on-demand
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values:
+          - c
+          - m
+          - r
+        - key: eks.amazonaws.com/instance-generation
+          operator: Gt
+          values:
+          - "4"
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+          - arm64
+        taints:
+        - effect: NoSchedule
+          key: GravitonOnly     # Graviton 워크로드만 수용
+        terminationGracePeriod: 24h0m0s
+    limits:
+      cpu: "1000"
+      memory: 1000Gi
+  EOF
+  
+  kubectl apply -f ~/environment/nodepool-graviton.yaml
+  ```
+
+* UI Component 재배포
+
+  ```shell
+  cat << EOF >~/environment/values-ui.yaml
+  endpoints:
+    catalog: http://retail-store-app-catalog:80
+    carts: http://retail-store-app-carts:80
+    checkout: http://retail-store-app-checkout:80
+    orders: http://retail-store-app-orders:80
+    assets: http://retail-store-app-assets:80
+  
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: ui
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  
+  nodeSelector:
+    karpenter.sh/nodepool: graviton
+  tolerations:
+  - key: "GravitonOnly"
+    operator: "Exists"
+  EOF
+  
+  helm upgrade -f ~/environment/values-ui.yaml retail-store-app-ui oci://public.ecr.aws/aws-containers/retail-store-sample-ui-chart --version ${RETAIL_STORE_APP_HELM_CHART_VERSION} --hide-notes
+  ```
+  
+  <img src="../../images/automode-14.png" />
