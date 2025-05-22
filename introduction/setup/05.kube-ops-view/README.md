@@ -121,93 +121,93 @@
 * EKS Auto Mode에서는 Managed Ingress Controller를 사용
 * kube-ops-view-alb-automodel.sh  
   ```shell
-    cd ~/environment
-    git clone https://codeberg.org/hjacobs/kube-ops-view.git
-    cd kube-ops-view
+  cd ~/environment
+  git clone https://codeberg.org/hjacobs/kube-ops-view.git
+  cd kube-ops-view
+  
+  cat << EOF > deploy/ingressclass.yaml
+  apiVersion: eks.amazonaws.com/v1
+  kind: IngressClassParams
+  metadata:
+    name: eks-auto-alb
+  spec:
+    scheme: internet-facing
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: IngressClass
+  metadata:
+    name: eks-auto-alb
+    annotations:
+      ingressclass.kubernetes.io/is-default-class: "true"
+  spec:
+    controller: eks.amazonaws.com/alb
+    parameters:
+      apiGroup: eks.amazonaws.com
+      kind: IngressClassParams
+      name: eks-auto-alb
+  EOF
     
-    cat << EOF > deploy/ingressclass.yaml
-    apiVersion: eks.amazonaws.com/v1
-    kind: IngressClassParams
-    metadata:
-      name: eks-auto-alb
-    spec:
-      scheme: internet-facing
-    ---
-    apiVersion: networking.k8s.io/v1
-    kind: IngressClass
-    metadata:
-      name: eks-auto-alb
+  cat << EOF > deploy/ingress.yaml
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+      name: "kube-ops-view-ingress"
       annotations:
-        ingressclass.kubernetes.io/is-default-class: "true"
-    spec:
-      controller: eks.amazonaws.com/alb
-      parameters:
-        apiGroup: eks.amazonaws.com
-        kind: IngressClassParams
-        name: eks-auto-alb
-    EOF
-    
-    cat << EOF > deploy/ingress.yaml
-    apiVersion: networking.k8s.io/v1
-    kind: Ingress
-    metadata:
-        name: "kube-ops-view-ingress"
-        annotations:
-          alb.ingress.kubernetes.io/target-type: ip
-          alb.ingress.kubernetes.io/group.name: kube-ops-view
-          alb.ingress.kubernetes.io/group.order: '1'
-          alb.ingress.kubernetes.io/healthcheck-path: "/"
-    spec:
-        ingressClassName: eks-auto-alb
-        rules:
-        - http:
-            paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: "kube-ops-view"
-                    port:
-                      number: 80
-    EOF
-    
-    cat << EOF > deploy/service.yaml
-    apiVersion: v1
-    kind: Service
-    metadata:
-      labels:
-        application: kube-ops-view
-        component: frontend
-      name: kube-ops-view
-    spec:
-      selector:
-        application: kube-ops-view
-        component: frontend
-      type: NodePort
-      ports:
-      - port: 80
-        protocol: TCP
-        targetPort: 8080
-    EOF
-    
-    cat << EOF > deploy/kustomization.yaml
-    apiVersion: kustomize.config.k8s.io/v1beta1
-    kind: Kustomization
-    resources:
-      - deployment.yaml
-      - rbac.yaml
-      - service.yaml
-      - redis-deployment.yaml
-      - redis-service.yaml
-      - ingress.yaml
-      - ingressclass.yaml
-    EOF
-    
-    kubectl apply -k deploy
-    
-    sleep 20s
-    kubectl get ingress kube-ops-view-ingress | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
-    ```
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/group.name: kube-ops-view
+        alb.ingress.kubernetes.io/group.order: '1'
+        alb.ingress.kubernetes.io/healthcheck-path: "/"
+  spec:
+      ingressClassName: eks-auto-alb
+      rules:
+      - http:
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: "kube-ops-view"
+                  port:
+                    number: 80
+  EOF
+  
+  cat << EOF > deploy/service.yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      application: kube-ops-view
+      component: frontend
+    name: kube-ops-view
+  spec:
+    selector:
+      application: kube-ops-view
+      component: frontend
+    type: NodePort
+    ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 8080
+  EOF
+  
+  cat << EOF > deploy/kustomization.yaml
+  apiVersion: kustomize.config.k8s.io/v1beta1
+  kind: Kustomization
+  resources:
+    - deployment.yaml
+    - rbac.yaml
+    - service.yaml
+    - redis-deployment.yaml
+    - redis-service.yaml
+    - ingress.yaml
+    - ingressclass.yaml
+  EOF
+  
+  kubectl apply -k deploy
+  
+  sleep 20s
+  kubectl get ingress kube-ops-view-ingress | tail -n 1 | awk '{ print "Kube-ops-view URL = http://"$4 }'
+  ```
   
 ### Install with NLB
 * [AWS load balancer controller](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/aws-load-balancer-controller.html) 설치 필수
