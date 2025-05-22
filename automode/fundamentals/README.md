@@ -95,3 +95,155 @@ kubectl get nodes -l karpenter.sh/nodepool=system
     ```
 
     <img src="../../images/automode-12.png" />
+    
+# Autoscaling
+## Overview
+* 중단이 발새하는 상황 
+    * 노드 스케일 다운(비용절감)
+    * 노드 최대 수명 도달(만료)
+    * 실행중인 파드에 영향을 미칠 수 있음
+* Karpenter의 중단 관리 매커니즘
+    * 만료(expireation)
+    * 드리프트 감지(drift detection)
+    * 통합(consolidation)
+
+### 통합(Consolidation)
+* Karpenter는 저사용율/유휴 노드가 식별되면 클러스터 리소스를 최족화하기 위해 통합 프로세스를 작동
+* 활성 워크로드가 없는 노드는 제거
+* 허용 가능한 용량이 있는 노드에 효율적인 bin-packing(워크로드를 노드에 최적으로 배치하는 작업)
+* 가용성을 유지하면서 노드를 드레이닝
+
+* Node Pool 보기
+```shell
+kubectl get nodepools general-purpose -o yaml
+```
+* Disrupton Bock 
+  * `WhenEmptyOrUnderutilized` 노드가 비어있거나, 사용율이 낮을 경우 비용을 줄이기 위해 노드를 제거하거나 교체
+  * `expireAfter` 노드는 지정된 시간이후에 자동으로 제거됨
+
+```yaml{15-19,23}
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  annotations:
+    karpenter.sh/nodepool-hash: "4012513481623584108"
+    karpenter.sh/nodepool-hash-version: v3
+  creationTimestamp: "2025-01-15T09:32:29Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/managed-by: eks
+  name: general-purpose
+  resourceVersion: "241001"
+  uid: 9b1c4ad0-d42d-4c63-bd96-b0a201aeec0e
+spec:
+  disruption:
+    budgets:
+    - nodes: 10%          # 한 번에 최대 10%의 노드만 중단
+    consolidateAfter: 30s # 비었거나 저사용율 노드가 감지된 후부터 통합이 시작되기까지 대기 시간
+    consolidationPolicy: WhenEmptyOrUnderutilized
+  template:
+    metadata: {}
+    spec:
+      expireAfter: 336h # 노드의 수명(14일)
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+        - on-demand
+      - key: eks.amazonaws.com/instance-category
+        operator: In
+        values:
+        - c
+        - m
+        - r
+      - key: eks.amazonaws.com/instance-generation
+        operator: Gt
+        values:
+        - "4"
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - amd64
+      - key: kubernetes.io/os
+        operator: In
+        values:
+        - linux
+      terminationGracePeriod: 24h0m0s
+```
+
+### Horizontal Pod Autoscaling
+* EKS Auto Mode에서 애플리케이션 레벨의 스케일링을 위해서는 메트릭 서버를 설치해야 함.
+* 콘솔의 Add-on 메뉴에서도 설치 가능하며, 아래와 같이 eksctl 명령어로도 설치 가능
+  ```shell
+  eksctl create addon --name metrics-server --cluster ${DEMO_CLUSTER_NAME}
+  ```
+  ```shell
+  kubectl get deployment metrics-server -n kube-system
+  ```
+  ```shell
+  kubectl top node
+  kubectl top pods -l app.kubernetes.io/name=ui
+  ```
+
+* UI 콤포넌트 재배포
+
+  ```shell
+  helm upgrade -i retail-store-app-ui oci://public.ecr.aws/aws-containers/retail-store-sample-ui-chart \
+    --version ${RETAIL_STORE_APP_HELM_CHART_VERSION} --hide-notes -f - << EOF
+  endpoints:
+    catalog: http://retail-store-app-catalog:80
+    carts: http://retail-store-app-carts:80
+    checkout: http://retail-store-app-checkout:80
+    orders: http://retail-store-app-orders:80
+    assets: http://retail-store-app-assets:80
+  
+  topologySpreadConstraints:
+    - maxSkew: 1
+      minDomains: 3
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: ui
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/instance: retail-store-app-ui
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  EOF
+  ```
+
+* hpa 확인
+  
+  ```shell
+  kubectl get hpa  
+  ```
+
+* 부하 주기
+  * 동시에 10개의 워커
+  * 가각 초당 5개의 쿼리 전송
+  * 최대 60분간 실행
+  
+  ```shell
+  kubectl get hpa retail-store-app-ui --watch  
+  ```
+
+  ```shell
+  kubectl run load-generator \
+   --image=williamyeh/hey:latest \
+   --restart=Never -- -c 10 -q 10 -z 3m http://retail-store-app-ui/utility/stress/100000
+  ```
+  ```shell
+  kubectl delete pod load-generator
+  ```
