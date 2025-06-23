@@ -111,5 +111,9 @@
   ```
 
 * 업그레이드 상태 체크
-```shell
-```
+  ```shell
+  kubectl get nodes
+  ```
+  ```shell
+  kubectl get events | grep Drifted/Replace
+  ```
