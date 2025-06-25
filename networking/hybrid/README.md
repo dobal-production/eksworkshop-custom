@@ -287,6 +287,22 @@ kubectl delete -k ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes
   * 파드가 scale-in 될 경우, 쿠버네티스는 가장 오래된 파드 먼저 삭제하려고 시도함.
   * hybrid 노드에 먼저 배포되므로, scale-in시 hybrid 노드에 있는 파드가 우선적으로 삭제될 것 --> 우리가 원치 않는 상황
 
+### Kyverno
+<img src="../../hybrid-03.png" />
+
+* 쿠버네티스와 클라우드 네이티브 환경을 위한 정책관리 도구
+* yaml기반 선언적 정책 (Policy as Code, PaC)
+* 쿠버네티스 네이티브 리소스로 관리
+* kubectl, git, kustomize 등 기존 도구 활용 가능
+* JMESPath와 CEL(Common Expressions Language) 지원
+* **핵심기능**
+  * 쿠버네티스 리소스 검증, 변경, 생성, 정리
+  * OCI(Open Container Initiative) 컨테이너 이미지 서명 및 아티팩트 검증
+* **도구 및 확장**
+  * CLI : 오프라인 정책 테스트 및 적용(IaC, CI/CD 파이프라인)
+  * Policy Reporter : 웹기반 GUI로 보고서 관리
+  * JSON 지원 : K8S 외 환경에서도 정책 적용 가능
+
 **`Kyverno` 설치**
 ```shell
 helm repo add kyverno https://kyverno.github.io/kyverno/
