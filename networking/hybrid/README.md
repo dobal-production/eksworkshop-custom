@@ -1,6 +1,7 @@
 # Amazon EKS Hybrid Node
 
 <img src="../../images/hybrid-01.png"/>
+<img src="../../images/hybrid-04.jpg"/>
 
 ## Lab Overview
 <img src="../../images/hybrid-02.png"/>
@@ -8,7 +9,64 @@
 ## Connect Hybrid Node
 * 온프레미스 노드에 AWS SSM hybrid activation 또는 AWS IAM Role Anywhere를 활성화 해야 함.
 * 실습에서는 SSM hybrid activation 사용
+* 최소 100 Mbps, 최대 200ms 네트워크 레이턴시
+* hybrid 노드 설치와 업그레이드를 위해 접근을 허용해야 하는 도메인  
 
+  |    Component    | URL                      | Protocal | Port |
+  |-----------------|--------------------------|----------|------|
+  | EKS node artifacts (S3)        | https://hybrid-assets.eks.amazonaws.com    | HTTPS | 443 |
+  | EKS service endpoints          | https://eks.region.amazonaws.com           | HTTPS | 443 |
+  | ECR service endpoints          | https://api.ecr.region.amazonaws.com       | HTTPS | 443 |
+  | EKS ECR endpoints              | [Amazon container image registries for Amazon EKS add-ons](https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html) for regional endpoints.        | HTTPS | 443 |
+  | SSM binary endpoint            | https://amazon-ssm-region.s3.region.amazonaws.com        | HTTPS | 443 |
+  | SSM service endpoints          | https://ssm.region.amazonaws.com           | HTTPS | 443 |
+  | EKS service endpoints          | https://eks.region.amazonaws.com           | HTTPS | 443 |
+  | IAM Anywhere binary endpoint   | https://rolesanywhere.amazonaws.com        | HTTPS | 443 |
+  | IAM Anywhere service endpoint  | https://rolesanywhere.region.amazonaws.com | HTTPS | 443 |
+* hybrid 노드 운영을 위한 네트워크 Inbound/Outbound 액세스  
+  <img src="../../images/hybrid-05.png" />
+
+
+### Hybrid 노드에서 사용할 IAM role에 필요한 권한들
+* **하이브리드 노드 CLI(nodeadm) 권한:**
+  * eks:DescribeCluster 액션 필요
+  * 클러스터 정보 수집에 사용
+  * 이 권한이 없는 경우, nodeadm init 실행 시 수동으로 다음 정보를 제공해야 함:
+    * Kubernetes API 엔드포인트
+    * 클러스터 CA 번들
+    * 서비스 IPv4 CIDR
+* **kubelet 권한:**
+  * Amazon ECR 접근을 위한 AmazonEC2ContainerRegistryPullOnly 권한 필요
+  * 컨테이너 이미지 가져오기 용도
+* **Systems Manager 사용 시 추가 권한:**
+  * AmazonSSMManagedInstanceCore 정책에 정의된 하이브리드 활성화 권한
+  * ssm:DeregisterManagedInstance 액션 권한
+  * ssm:DescribeInstanceInformation 액션 권한
+  * nodeadm uninstall 시 인스턴스 등록 해제에 필요
+
+### Amazon EKS Hybrid Nodes CLI(`nodeadm`) 설치
+* **`nodeadm` 다운로드**
+  > x86_64
+  ```shell
+  curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/amd64/nodeadm'
+  ```
+  > ARM
+  ```shell
+  curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/arm64/nodeadm'
+  ```
+* **`nodeadm`에 실행권한 필요**
+  * `chmod +x nodeadm`
+  * `nodeadm`은 root 권한으로 실행해야 함
+* **Amazon EKS 클러스터 조인을 위한 아티팩트 및 종속성 설치**
+  ```shell
+  nodeadm install 1.32 --credential-provider ssm
+  ```
+* **Amazon EKS 클러스터 조인**
+  ```shell
+  nodeadm init -c file://nodeConfig.yaml
+  ```
+
+### Lab : Connect Hybrid Node
 ```shell
 export ACTIVATION_JSON=$(aws ssm create-activation \
 --default-instance-name hybrid-ssm-node \
