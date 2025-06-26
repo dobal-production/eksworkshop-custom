@@ -3,10 +3,6 @@
 <img src="../../images/hybrid-01.png"/>
 <img src="../../images/hybrid-04.jpg"/>
 
-## Lab Overview
-<img src="../../images/hybrid-02.png"/>
-
-## Connect Hybrid Node
 * 온프레미스 노드에 AWS SSM hybrid activation 또는 AWS IAM Role Anywhere를 활성화 해야 함.
 * 실습에서는 SSM hybrid activation 사용
 * 최소 100 Mbps, 최대 200ms 네트워크 레이턴시
@@ -66,7 +62,20 @@
   nodeadm init -c file://nodeConfig.yaml
   ```
 
-### Lab : Connect Hybrid Node
+### SSM hybrid activation vs IAM Role Anywhere
+|      항목      | SSM hybrid activation | IAM Role Anywhere |
+|----------------|-----------------------|-------------------|
+| 사용 목적 | 온프레미스/엣지 디바이스를 AWS Systems Manager에 등록하여 관리형 인스턴스로 운영 | 온프레미스/외부 워크로드가 AWS 리소스에 접근할 때 X.509 인증서 기반의 임시 보안 인증 제공 |
+| 인증 방식 | Activation 코드와 ID를 사용한 초기 등록 방식 | X.509 인증서를 사용한 상호 TLS 인증 |
+| 접근 범위 | Systems Manager 기능을 통한 시스템 관리에 국한 | AWS 서비스 전반에 대한 접근 권한 제어 가능 |
+| 주요 용도 | 패치 관리, 인벤토리 수집, 원격 명령 실행 등 시스템 관리 | CI/CD 파이프라인, 애플리케이션의 AWS 리소스 접근 |
+| 보안 토큰 | Systems Manager 서비스에 특화된 관리 토큰 사용 | AWS STS를 통한 임시 보안 토큰 발급 |
+| 선택 기준 | 시스템 관리 목적 | AWS 서비스 전반의 접근이 필요 |
+
+## Lab Overview
+<img src="../../images/hybrid-02.png"/>
+
+## Connect Hybrid Node
 ```shell
 export ACTIVATION_JSON=$(aws ssm create-activation \
 --default-instance-name hybrid-ssm-node \
@@ -126,6 +135,8 @@ ip-10-42-136-243.us-west-2.compute.internal   Ready      <none>   91m   v1.31.3-
 ip-10-42-177-246.us-west-2.compute.internal   Ready      <none>   91m   v1.31.3-eks-59bf375
 mi-0e9b2a38f2998f783                          NotReady   <none>   19s   v1.31.7-eks-473151a
 ```
+
+<img src="../../images/hybrid-06.png" />
 
 ### cilium란?
 * Cilium은 Kubernetes 클러스터를 위한 오픈소스 소프트웨어로, Linux 커널의 eBPF(extended Berkeley Packet Filter) 기술을 기반으로 하는 고성능 네트워킹, 보안 및 관찰 가능성 솔루션입니다.
