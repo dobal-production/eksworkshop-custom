@@ -42,27 +42,14 @@
   * ssm:DescribeInstanceInformation 액션 권한
   * nodeadm uninstall 시 인스턴스 등록 해제에 필요
 
-### Amazon EKS Hybrid Nodes CLI(`nodeadm`) 설치
-* **`nodeadm` 다운로드**
-  > x86_64
-  ```shell
-  curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/amd64/nodeadm'
-  ```
-  > ARM
-  ```shell
-  curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/arm64/nodeadm'
-  ```
-* **`nodeadm`에 실행권한 필요**
-  * `chmod +x nodeadm`
-  * `nodeadm`은 root 권한으로 실행해야 함
-* **Amazon EKS 클러스터 조인을 위한 아티팩트 및 종속성 설치**
-  ```shell
-  nodeadm install 1.32 --credential-provider ssm
-  ```
-* **Amazon EKS 클러스터 조인**
-  ```shell
-  nodeadm init -c file://nodeConfig.yaml
-  ```
+> 본 워크샵에서는 Instance Profile을 만들지 않아 Hybrid 노드에 IAM Role이 적용되지 않는다.  
+> **Instance Profile 생성**
+> ```shell
+export INSTANCE_PROFILE=eks-workshop-hybrid-node-role-profile
+aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE
+aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE --role-name $HYBRID_ROLE_NAME
+aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE
+```
 
 ### SSM hybrid activation vs IAM Role Anywhere
 |      항목      | SSM hybrid activation | IAM Role Anywhere |
@@ -697,4 +684,88 @@ NAME                                NODE                   ANNOTATIONS
 nginx-deployment-7474978d4f-598ms   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
 nginx-deployment-7474978d4f-brs6l   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
 nginx-deployment-7474978d4f-gbffc   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+```
+
+## 노드 추가 설치
+* 추가할 노드 이름 : `eks-workshop-hybrid-node-02`
+* Instance platform : Amazon Linux
+* AMI : `Amazon Linux 2023 kernel-6.1 AMI` (default)
+* Instance type : t2.micro
+* Key Pair : `Proceed without a key pair (Not Recommended)` 선택
+* VPC : `eks-workshop-remote-public` 선택
+* Security Group : `hybrid-nodes-sg`
+* Volume Size : 30GiB
+* IAM Role : eks-workshop-hybrid-node-role-profile
+
+### Amazon EKS 클러스터 조인을 위한 SSM Hybrid Activation
+```shell
+export ACTIVATION_JSON=$(aws ssm create-activation \
+--default-instance-name hybrid-ssm-node \
+--iam-role $HYBRID_ROLE_NAME \
+--registration-limit 1 \
+--region $AWS_REGION)
+export ACTIVATION_ID=$(echo $ACTIVATION_JSON | jq -r ".ActivationId")
+export ACTIVATION_CODE=$(echo $ACTIVATION_JSON | jq -r ".ActivationCode")
+```
+```shell
+cd ~/environment/
+cat ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes/nodeconfig.yaml \
+| envsubst > nodeconfig-new-node.yaml
+cat  nodeconfig-new-node.yaml
+```
+
+### Amazon EKS Hybrid Nodes CLI(`nodeadm`) 설치
+**`nodeadm` 다운로드**
+  > x86_64
+  ```shell
+  curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/amd64/nodeadm'
+  ```
+  > ARM
+  ```shell
+  curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/arm64/nodeadm'
+  ```
+**`nodeadm`에 실행권한 필요**
+```shell
+chmod +x nodeadm
+```
+
+**Amazon EKS 클러스터 조인을 위한 아티팩트 및 종속성 설치**
+> `nodeadm`은 root 권한으로 실행해야 함
+```shell
+sudo ./nodeadm install 1.31 --credential-provider ssm
+```
+
+**nodeconfig.yaml 생성**
+* 앞서 출력한 nodeconfig-new-node.yaml 파일의 내용을 복사
+* vi 명령어를 이용하여 nodeconfig.yaml 파일 생성 후, 복사한 내용을 붙여넣고 저장
+
+**클러스터에 노드 조인**
+```shell
+sudo ./nodeadm init -c file://nodeconfig.yaml
+```
+> 초기에는 상태가 NotReady로 표시되지만, 몇 분이 지나면 Ready 상태로 바뀜
+
+**노드확인**
+```shell
+kubectl get nodes
+```
+
+**애플리케이션 스케일 아웃**
+```shell
+kubectl scale deployment nginx-deployment --replicas 9
+```
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+```shell
+NAME                                NODE                   ANNOTATIONS
+nginx-deployment-7474978d4f-598ms   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-9s82b   mi-0194ba1068f1af7a8   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-brs6l   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-fwzk2   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-gbffc   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-k597l   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-kfr2j   mi-0194ba1068f1af7a8   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-kmbjk   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-m7kpc   mi-0194ba1068f1af7a8   map[controller.kubernetes.io/pod-deletion-cost:1]
 ```
