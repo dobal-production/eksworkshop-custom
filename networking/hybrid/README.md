@@ -6,7 +6,9 @@
 * 온프레미스 노드에 AWS SSM hybrid activation 또는 AWS IAM Role Anywhere를 활성화 해야 함.
 * 실습에서는 SSM hybrid activation 사용
 * 최소 100 Mbps, 최대 200ms 네트워크 레이턴시
-* hybrid 노드 설치와 업그레이드를 위해 접근을 허용해야 하는 도메인  
+* 온프레미스의 노드 및 파드의 CIDR가 미리 확보되어야 함.
+* 하이브리드 노드에서 Kubernetes 웹후크를 실행하는 경우 포드 CIDR을 추가로 구성해야 함. 예를 들어 AWS Distro for Open Telemetry(ADOT)는 웹후크를 사용
+* hybrid 노드 설치와 업그레이드를 위해 접근을 허용해야 하는 도메인 [[참고](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/hybrid-nodes-networking.html#hybrid-nodes-networking-on-prem)] 
 
   |    Component    | URL                      | Protocal | Port |
   |-----------------|--------------------------|----------|------|
@@ -19,11 +21,11 @@
   | EKS service endpoints          | https://eks.region.amazonaws.com           | HTTPS | 443 |
   | IAM Anywhere binary endpoint   | https://rolesanywhere.amazonaws.com        | HTTPS | 443 |
   | IAM Anywhere service endpoint  | https://rolesanywhere.region.amazonaws.com | HTTPS | 443 |
-* hybrid 노드 운영을 위한 네트워크 Inbound/Outbound 액세스  
+* hybrid 노드 운영을 위해 온프레미스 방화벽에서 허용해야 할 네트워크 액세스 [[참고](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/hybrid-nodes-networking.html#hybrid-nodes-networking-on-prem)]
   <img src="../../images/hybrid-05.png" />
 
 
-### Hybrid 노드에서 사용할 IAM role에 필요한 권한들
+### Hybrid 노드에서 사용할 IAM role에 필요한 권한들 [[참고](https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/hybrid-nodes-creds.html)]
 * **하이브리드 노드 CLI(nodeadm) 권한:**
   * eks:DescribeCluster 액션 필요
   * 클러스터 정보 수집에 사용
@@ -76,6 +78,15 @@
 <img src="../../images/hybrid-02.png"/>
 
 ## Connect Hybrid Node
+* Amazon EKS Hybrid Node는 임시 IAM 자격 증명을 사용. 
+* AWS SSM hybrid activation 또는 AWS IAM Roles Anywhere를 사용.
+
+**본 실습에서는 AWS SSM hybrid activation을 사용**
+* Activation Code와 Activation ID는 24시간후에 만료되며, 최대 30일까지 설정 가능
+* 생성시 한 번만 표시되며, 나중에 다시 확인할 수 없음
+* Hybrid 노드에서 사용할 IAM Role을 미리 생성해 두어야 함
+* 노드를 클러스터에 등록시 사용
+
 ```shell
 export ACTIVATION_JSON=$(aws ssm create-activation \
 --default-instance-name hybrid-ssm-node \
@@ -86,6 +97,7 @@ export ACTIVATION_ID=$(echo $ACTIVATION_JSON | jq -r ".ActivationId")
 export ACTIVATION_CODE=$(echo $ACTIVATION_JSON | jq -r ".ActivationCode")
 
 ```
+
 ```yaml
 apiVersion: node.eks.aws/v1alpha1
 kind: NodeConfig
@@ -100,9 +112,24 @@ spec:
 ```
 
 **환경변수를 nodeconfig.yaml 파일에 입력**
+> `envsubst`명령어를 이용하여 변수 문자열 치환
+
 ```shell
 cat ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes/nodeconfig.yaml \
 | envsubst > nodeconfig.yaml
+```
+
+```yaml
+apiVersion: node.eks.aws/v1alpha1
+kind: NodeConfig
+spec:
+  cluster:
+    name: eks-workshop
+    region: us-west-2
+  hybrid:
+    ssm:
+      activationCode: 4L+tWgQj/is+qKabz7tk
+      activationId: 99e29ad2-4ab8-4659-97db-a2da67f15245
 ```
 
 **hybrid 대상 인스턴스에 nodeconfig 파일 업로드**
@@ -117,12 +144,90 @@ scp -i private-key.pem nodeconfig.yaml ubuntu@$HYBRID_NODE_IP:/home/ubuntu/nodec
 ssh -i private-key.pem ubuntu@$HYBRID_NODE_IP \
 "sudo nodeadm install $EKS_CLUSTER_VERSION --credential-provider ssm"
 ```
+```shell
+ec2-user:~/environment:$ ssh -i private-key.pem ubuntu@$HYBRID_NODE_IP \
+"sudo nodeadm install $EKS_CLUSTER_VERSION --credential-provider ssm"
+{"level":"info","ts":"2025-07-01T04:12:53.024Z","caller":"install/install.go:92","msg":"Creating package manager..."}
+{"level":"info","ts":"2025-07-01T04:12:53.025Z","caller":"install/install.go:101","msg":"Validating Kubernetes version","kubernetes version":"1.31"}
+{"level":"info","ts":"2025-07-01T04:12:53.712Z","caller":"install/install.go:107","msg":"Using Kubernetes version","kubernetes version":"1.31.7"}
+{"level":"info","ts":"2025-07-01T04:12:53.712Z","caller":"flows/install.go:43","msg":"Configuring package manager. This might take a while..."}
+{"level":"info","ts":"2025-07-01T04:12:53.712Z","caller":"flows/install.go:65","msg":"Installing containerd..."}
+{"level":"info","ts":"2025-07-01T04:13:00.169Z","caller":"flows/install.go:70","msg":"Installing iptables..."}
+{"level":"info","ts":"2025-07-01T04:13:00.169Z","caller":"flows/install.go:88","msg":"Installing SSM agent installer..."}
+{"level":"info","ts":"2025-07-01T04:13:00.170Z","caller":"ssm/source.go:110","msg":"Downloading SSM installer","region":"us-west-2","url":"https://amazon-ssm-us-west-2.s3.us-west-2.amazonaws.com/latest/debian_amd64/ssm-setup-cli"}
+{"level":"info","ts":"2025-07-01T04:13:11.900Z","caller":"flows/install.go:104","msg":"Installing kubelet..."}
+{"level":"info","ts":"2025-07-01T04:13:12.499Z","caller":"flows/install.go:113","msg":"Installing kubectl..."}
+{"level":"info","ts":"2025-07-01T04:13:12.787Z","caller":"flows/install.go:122","msg":"Installing cni-plugins..."}
+{"level":"info","ts":"2025-07-01T04:13:13.885Z","caller":"flows/install.go:131","msg":"Installing image credential provider..."}
+{"level":"info","ts":"2025-07-01T04:13:13.992Z","caller":"flows/install.go:140","msg":"Installing IAM authenticator..."}
+{"level":"info","ts":"2025-07-01T04:13:14.306Z","caller":"flows/install.go:60","msg":"Finishing up install..."}
+```
 
 **앞서 업로드한 nodeconfig 파일로 초기화**
 ```shell
 ssh -i private-key.pem ubuntu@$HYBRID_NODE_IP \
 "sudo nodeadm init -c file://nodeconfig.yaml"
 ```
+
+<details>
+<summary>로그 보기</summary>
+
+```shell
+ec2-user:~/environment:$ ssh -i private-key.pem ubuntu@$HYBRID_NODE_IP \
+"sudo nodeadm init -c file://nodeconfig.yaml"
+{"level":"info","ts":"2025-07-01T04:15:06.951Z","caller":"init/init.go:62","msg":"Checking user is root.."}
+{"level":"info","ts":"2025-07-01T04:15:06.952Z","caller":"init/init.go:76","msg":"Loading installed components"}
+{"level":"info","ts":"2025-07-01T04:15:07.212Z","caller":"init/init.go:92","msg":"Validating firewall ports for cilium and calico"}
+{"level":"info","ts":"2025-07-01T04:15:07.306Z","caller":"node/node.go:13","msg":"Loading configuration..","configSource":"file://nodeconfig.yaml"}
+{"level":"info","ts":"2025-07-01T04:15:07.307Z","caller":"node/node.go:23","msg":"Setting up hybrid node provider..."}
+{"level":"info","ts":"2025-07-01T04:15:07.310Z","caller":"hybrid/validator.go:60","msg":"Validating configuration..."}
+{"level":"info","ts":"2025-07-01T04:15:07.310Z","caller":"flows/init.go:31","msg":"Configuring Aws..."}
+{"level":"info","ts":"2025-07-01T04:15:07.310Z","caller":"ssm/config.go:44","msg":"Registering machine with SSM agent"}
+{"level":"info","ts":"2025-07-01T04:15:08.004Z","caller":"ssm/config.go:66","msg":"Machine registered with SSM, assigning instance ID as node name","instanceID":"mi-05ebf6e3bf8f8d27f"}
+{"level":"info","ts":"2025-07-01T04:15:08.005Z","caller":"ssm/daemon.go:71","msg":"Restarting SSM agent..."}
+{"level":"info","ts":"2025-07-01T04:15:08.013Z","caller":"ssm/daemon.go:81","msg":"Waiting for SSM agent to be running..."}
+{"level":"info","ts":"2025-07-01T04:15:08.014Z","caller":"ssm/daemon.go:85","msg":"SSM agent is running"}
+{"level":"info","ts":"2025-07-01T04:15:08.014Z","caller":"hybrid/aws.go:34","msg":"Waiting for AWS config to be available"}
+{"level":"info","ts":"2025-07-01T04:15:10.015Z","caller":"hybrid/configenricher.go:18","msg":"Enriching configuration..."}
+{"level":"info","ts":"2025-07-01T04:15:10.015Z","caller":"hybrid/configenricher.go:25","msg":"Default options populated","defaults":{"sandboxImage":"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/pause:3.5"}}
+{"level":"info","ts":"2025-07-01T04:15:10.196Z","caller":"hybrid/configenricher.go:32","msg":"Cluster details populated","cluster":{"name":"eks-workshop","region":"us-west-2","apiServerEndpoint":"https://5DF22373D2D41BC5BDE0F83785EB7F2E.gr7.us-west-2.eks.amazonaws.com","certificateAuthority":"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJWkIxYXpwSkFBSVF3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBM01ERXdNVE16TVRaYUZ3MHpOVEEyTWprd01UTTRNVFphTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURLUXhxbVA0eE1ZNDFSMmxqdkJFUzVLSlQ3U0hsVTFlL3N5dGpzRThjb0F2ZUpVNklvNFNsenhqbFcKWUl2cVBNaGpUNXpyeVZTSkFUMWlocjQyWkdXOGQ3NkZtQkhnblVEQTRzTXcreEYreWY4VXdtTmJ0c0N1NE9oQwpxcmNzRU9TVUxmN0IraWkrVTlmMm1DcHlrNE9NUUI5MVVzWS9lTFBlWTIvUW9UcVd0RkJvWktuVGZFNGpHcHR3ClFIVVl2Y1VxVmpzOW1TVU5vNDNUaWc4U0h6S0dES3MrR25lZ2p5MU9wZmVkOVA5THB5eWJlQ3dEYVltZWNhYmcKQXFOMStMVmNHbnhEY2FSQlk1SmlGUjBSL1dlR0g3emoweWVwNHh5ZWhBVEdYSzJDd09UMkw2WS8vYmNxRm9IUQpVM3NKU2ZSYmRPRVJSVktmSjNDRFRBN3ROUWhiQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJSaW41bE5Mb3Z6TlNZaTd6Y3NnYnBZK1d0c2pUQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQnUwVEVDOTRDLwpBa2dTVGRnc0VBVlB3a2JxVWxmQ0hVYXFtZUh2MnpvTkxpcG9IUHNMM3R1a09XVGI3Y2FxWENLK3BQMFRlbEpvCkNnU0NnSzVIUEVZQng2NG0vL2xFckViamtVVGNQNi9qeVZwNE5hN2VmL0JwYmo5VDNzN01QZjJCd25EdmZvaEUKaFpYWjJlZGkyR2FPbGFNcUFqME40Y0xvZndOSUhjZmg1NlY0M04zWlZJV0hhRXVyczhMVXdkU3ZOK1dUb0RuMQo5TG8rbWVQT005UktNUWxvb3JRMGg2Z2hDMnR4T2RnR2c1Q3RldWFoQ1BMM2VYMDhRUVdhd2Z4SER3SkpicFYyCktvMkd4VFR5ZElqQTFRbGJuMGhEa25YUVR0ckk0bStyM1l5MzdUcEx5MGg5K1MxdlFXdm9WQ2xreHB3VHdqRmUKVEI0UWc4OFRtR0IvCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K","cidr":"172.16.0.0/16"}}
+{"level":"info","ts":"2025-07-01T04:15:10.196Z","caller":"hybrid/ip_validator.go:211","msg":"Validating Node IP..."}
+{"level":"info","ts":"2025-07-01T04:15:10.196Z","caller":"hybrid/hybrid.go:101","msg":"Validating kubelet certificate..."}
+{"level":"info","ts":"2025-07-01T04:15:10.196Z","caller":"flows/init.go:45","msg":"Setting up system aspects..."}
+{"level":"info","ts":"2025-07-01T04:15:10.196Z","caller":"flows/init.go:48","msg":"Setting up system aspect..","name":"sysctl"}
+{"level":"info","ts":"2025-07-01T04:15:10.198Z","caller":"flows/init.go:52","msg":"Finished setting up system aspect","name":"sysctl"}
+{"level":"info","ts":"2025-07-01T04:15:10.198Z","caller":"flows/init.go:48","msg":"Setting up system aspect..","name":"swap"}
+{"level":"info","ts":"2025-07-01T04:15:10.198Z","caller":"flows/init.go:52","msg":"Finished setting up system aspect","name":"swap"}
+{"level":"info","ts":"2025-07-01T04:15:10.198Z","caller":"flows/init.go:48","msg":"Setting up system aspect..","name":"ports"}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"system/ports.go:74","msg":"No firewall enabled on the host. Skipping setting firewall rules..."}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"flows/init.go:52","msg":"Finished setting up system aspect","name":"ports"}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"flows/init.go:64","msg":"Configuring Pre-process daemons..."}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"flows/init.go:75","msg":"Configuring daemons..."}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"flows/init.go:79","msg":"Configuring daemon...","name":"containerd"}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"containerd/config.go:44","msg":"Writing containerd config to file..","path":"/etc/containerd/config.toml"}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"flows/init.go:83","msg":"Configured daemon","name":"containerd"}
+{"level":"info","ts":"2025-07-01T04:15:10.262Z","caller":"flows/init.go:79","msg":"Configuring daemon...","name":"kubelet"}
+{"level":"info","ts":"2025-07-01T04:15:10.344Z","caller":"kubelet/config.go:371","msg":"Detected kubelet version","version":"v1.31.7"}
+{"level":"info","ts":"2025-07-01T04:15:10.345Z","caller":"kubelet/config.go:460","msg":"Writing kubelet config to file..","path":"/etc/kubernetes/kubelet/config.json"}
+{"level":"info","ts":"2025-07-01T04:15:10.388Z","caller":"flows/init.go:83","msg":"Configured daemon","name":"kubelet"}
+{"level":"info","ts":"2025-07-01T04:15:10.388Z","caller":"flows/init.go:91","msg":"Ensuring daemon is running..","name":"containerd"}
+{"level":"info","ts":"2025-07-01T04:15:10.400Z","caller":"containerd/daemon.go:64","msg":"Waiting for containerd to be running..."}
+{"level":"info","ts":"2025-07-01T04:15:10.402Z","caller":"daemon/wait.go:25","msg":"Daemon is not in the desired state yet","daemon":"containerd","status":"unknown"}
+{"level":"info","ts":"2025-07-01T04:15:15.402Z","caller":"containerd/daemon.go:68","msg":"containerd is running"}
+{"level":"info","ts":"2025-07-01T04:15:15.402Z","caller":"flows/init.go:95","msg":"Daemon is running","name":"containerd"}
+{"level":"info","ts":"2025-07-01T04:15:15.402Z","caller":"flows/init.go:97","msg":"Running post-launch tasks..","name":"containerd"}
+{"level":"info","ts":"2025-07-01T04:15:15.402Z","caller":"containerd/sandbox.go:21","msg":"Looking up current sandbox image in containerd config.."}
+{"level":"info","ts":"2025-07-01T04:15:15.446Z","caller":"containerd/sandbox.go:33","msg":"Found sandbox image","image":"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/pause:3.5"}
+{"level":"info","ts":"2025-07-01T04:15:15.446Z","caller":"containerd/sandbox.go:35","msg":"Fetching ECR authorization token.."}
+{"level":"info","ts":"2025-07-01T04:15:15.488Z","caller":"containerd/sandbox.go:49","msg":"Pulling sandbox image..","image":"602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/pause:3.5"}
+{"level":"info","ts":"2025-07-01T04:15:16.096Z","caller":"containerd/sandbox.go:54","msg":"Finished pulling sandbox image","image-ref":"sha256:6996f8da07bd405c6f82a549ef041deda57d1d658ec20a78584f9f436c9a3bb7"}
+{"level":"info","ts":"2025-07-01T04:15:16.097Z","caller":"flows/init.go:101","msg":"Finished post-launch tasks","name":"containerd"}
+{"level":"info","ts":"2025-07-01T04:15:16.097Z","caller":"flows/init.go:91","msg":"Ensuring daemon is running..","name":"kubelet"}
+{"level":"info","ts":"2025-07-01T04:15:16.354Z","caller":"flows/init.go:95","msg":"Daemon is running","name":"kubelet"}
+{"level":"info","ts":"2025-07-01T04:15:16.354Z","caller":"flows/init.go:97","msg":"Running post-launch tasks..","name":"kubelet"}
+{"level":"info","ts":"2025-07-01T04:15:16.354Z","caller":"flows/init.go:101","msg":"Finished post-launch tasks","name":"kubelet"}
+```
+</details>
 
 **Node 연결 확인, 그러나 노드는 `NotReady` 상태**
 ```shell
@@ -136,7 +241,7 @@ ip-10-42-177-246.us-west-2.compute.internal   Ready      <none>   91m   v1.31.3-
 mi-0e9b2a38f2998f783                          NotReady   <none>   19s   v1.31.7-eks-473151a
 ```
 
-<img src="../../images/hybrid-06.png" />
+<img src="../../images/hybrid-07.png" />
 
 ### cilium란?
 * Cilium은 Kubernetes 클러스터를 위한 오픈소스 소프트웨어로, Linux 커널의 eBPF(extended Berkeley Packet Filter) 기술을 기반으로 하는 고성능 네트워킹, 보안 및 관찰 가능성 솔루션입니다.
@@ -177,7 +282,7 @@ helm install cilium cilium/cilium \
 
 **cilium-values.yaml**
 ```yaml
-# Cilum 파드가 배포될 노드를 지정
+# cilum 콤포넌트가 배포될 노드를 지정
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -194,8 +299,9 @@ ipam:
     clusterPoolIPv4MaskSize: 25 # 각 노드에 할당되는 서브넷 마스크 크기
     clusterPoolIPv4PodCIDRList: # 파드에 할당되는 IP 주소의 범위를 10.53.0.0/16으로 지정
     - 10.53.0.0/16
+# cilium 오퍼레이터 설정
 operator:
-  replicas: 1 # We only have 1 node in this lab, 2 is the default
+  replicas: 1 # cilium 오퍼레이터의 복제본 수를 1로 설정, default 2
   affinity:
     nodeAffinity: # 오퍼레이터도 hybrid 타입 노드에만 스케줄링
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -222,6 +328,8 @@ ip-10-42-136-243.us-west-2.compute.internal   Ready    <none>   9h      v1.31.3-
 ip-10-42-177-246.us-west-2.compute.internal   Ready    <none>   9h      v1.31.3-eks-59bf375
 mi-0e9b2a38f2998f783                          Ready    <none>   7h53m   v1.31.7-eks-473151a
 ```
+
+<img src="../../images/hybrid-06.png" />
 
 ## Routing Traffic to Hybrid Nodes
 **Sample workload 배포**
@@ -302,8 +410,10 @@ nodeAffinity:
             values:
               - hybrid
 ```
-```yaml
 
+**Ingress 배포**  
+
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -341,7 +451,7 @@ nginx-787d665f9b-x882v   mi-0e9b2a38f2998f783
 
 **배포된 ALB 확인**
 ```shell
-export ADDRESS=$(kubectl get ingress -n nginx-remote nginx -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}") && echo $ADDRESS
+export ADDRESS=$(kubectl get ingress -n nginx-remote nginx -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}") && echo "http://${ADDRESS}"
 curl -s $ADDRESS
 ```
 
@@ -351,10 +461,11 @@ kubectl delete -k ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes
 ```
 
 ## Cloud Bursting
-* `preferredDuringSchedulingIgnoredDuringExecution` 설정은 새로운 파드가 스캐쥴링 될 때는 hybrid 노드를 선호하도록 설정하지만, hybrid 노드에 더 이상 파드가 들어갈 공간이 없을 경우, 다른 노드를 사용할 수 있도록 허용
-* 그런데, `IgnoredDuringExecution` 부분으로 인해 기존 실행중인 파드는 이 영향을 받지 않음
+* **`preferredDuringSchedulingIgnoredDuringExecution`** 설정은 새로운 파드가 스캐쥴링 될 때는 hybrid 노드를 선호하도록 설정하지만, hybrid 노드에 더 이상 파드가 들어갈 공간이 없을 경우, 다른 노드를 사용할 수 있도록 허용
+* 그런데, **`IgnoredDuringExecution`** 부분으로 인해 기존 실행중인 파드는 이 영향을 받지 않음
   * 파드가 scale-in 될 경우, 쿠버네티스는 가장 오래된 파드 먼저 삭제하려고 시도함.
   * hybrid 노드에 먼저 배포되므로, scale-in시 hybrid 노드에 있는 파드가 우선적으로 삭제될 것 --> 우리가 원치 않는 상황
+  * `IgnoredDuringExecution` 때문에 기존 hybrid 노드에 있는 파드는 국난을 피해갈 수 있음
 
 ### Kyverno
 <img src="../../images/hybrid-03.png" />
@@ -481,3 +592,109 @@ mutate:
 * 높은 값을 가진 파드가 더 나중에 삭제됨
 * 같은 값을 가진 파드들 사이에서는 임의로 선택됨
 * `ReplicaSet` 컨트롤러가 파드를 삭제할 때 이 값을 참고
+
+**정책 적용**
+```shell
+kubectl apply -f ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes/kyverno/policy.yaml
+```
+
+**Kyverno가 잘 적용되었는지 확인**
+```shell
+kubectl wait --for=condition=Ready pods --all -n kyverno --timeout=2m
+```
+
+**애플리케이션 배포**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: eks.amazonaws.com/compute-type
+                    operator: In
+                    values:
+                      - hybrid
+      containers:
+        - name: nginx
+          image: public.ecr.aws/nginx/nginx:1.26
+          resources:
+            requests:
+              cpu: 200m
+            limits:
+              cpu: 200m
+          ports:
+            - containerPort: 80
+```
+
+```shell
+kubectl apply -f ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes/deployment.yaml
+```
+
+**배포 확인**
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+
+**애플리케이션 파드의 스케일 아웃**
+* nginx는 cpu 200m를 할당 받아야 하기에, 1개의 hybrid 노드에서는 약 8개의 파드까지 배포 가능
+* 8개 이상으로 스케일 아웃할 경우, `preferredDuringSchedulingIgnoredDuringExecution` 설정 때문에 기존 노드에도 파드가 배포될 수 있음
+
+```shell
+kubectl scale deployment nginx-deployment --replicas 15
+```
+
+**배포 상태 확인**
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+
+**스케일 인**
+```shell
+kubectl scale deployment nginx-deployment --replicas 3
+```
+```shell
+NAME                                NODE                                          ANNOTATIONS
+nginx-deployment-7474978d4f-46p94   ip-10-42-162-157.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-598ms   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-5tw4f   ip-10-42-136-177.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-986wq   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-brs6l   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-c69zr   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-dmb8k   ip-10-42-136-177.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-gbffc   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-gk5pq   ip-10-42-162-157.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-nrgrv   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-q7bcx   ip-10-42-162-157.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-qrwpn   ip-10-42-114-231.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-vjl44   ip-10-42-114-231.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-zr6b6   ip-10-42-136-177.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-zs7zh   ip-10-42-114-231.us-west-2.compute.internal   <none>
+```
+
+**다시 확인**
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+```shell
+NAME                                NODE                   ANNOTATIONS
+nginx-deployment-7474978d4f-598ms   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-brs6l   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-gbffc   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+```
