@@ -461,10 +461,11 @@ kubectl delete -k ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes
 ```
 
 ## Cloud Bursting
-* `preferredDuringSchedulingIgnoredDuringExecution` 설정은 새로운 파드가 스캐쥴링 될 때는 hybrid 노드를 선호하도록 설정하지만, hybrid 노드에 더 이상 파드가 들어갈 공간이 없을 경우, 다른 노드를 사용할 수 있도록 허용
-* 그런데, `IgnoredDuringExecution` 부분으로 인해 기존 실행중인 파드는 이 영향을 받지 않음
+* **`preferredDuringSchedulingIgnoredDuringExecution`** 설정은 새로운 파드가 스캐쥴링 될 때는 hybrid 노드를 선호하도록 설정하지만, hybrid 노드에 더 이상 파드가 들어갈 공간이 없을 경우, 다른 노드를 사용할 수 있도록 허용
+* 그런데, **`IgnoredDuringExecution`** 부분으로 인해 기존 실행중인 파드는 이 영향을 받지 않음
   * 파드가 scale-in 될 경우, 쿠버네티스는 가장 오래된 파드 먼저 삭제하려고 시도함.
   * hybrid 노드에 먼저 배포되므로, scale-in시 hybrid 노드에 있는 파드가 우선적으로 삭제될 것 --> 우리가 원치 않는 상황
+  * `IgnoredDuringExecution` 때문에 기존 hybrid 노드에 있는 파드는 국난을 피해갈 수 있음
 
 ### Kyverno
 <img src="../../images/hybrid-03.png" />
@@ -591,3 +592,109 @@ mutate:
 * 높은 값을 가진 파드가 더 나중에 삭제됨
 * 같은 값을 가진 파드들 사이에서는 임의로 선택됨
 * `ReplicaSet` 컨트롤러가 파드를 삭제할 때 이 값을 참고
+
+**정책 적용**
+```shell
+kubectl apply -f ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes/kyverno/policy.yaml
+```
+
+**Kyverno가 잘 적용되었는지 확인**
+```shell
+kubectl wait --for=condition=Ready pods --all -n kyverno --timeout=2m
+```
+
+**애플리케이션 배포**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: eks.amazonaws.com/compute-type
+                    operator: In
+                    values:
+                      - hybrid
+      containers:
+        - name: nginx
+          image: public.ecr.aws/nginx/nginx:1.26
+          resources:
+            requests:
+              cpu: 200m
+            limits:
+              cpu: 200m
+          ports:
+            - containerPort: 80
+```
+
+```shell
+kubectl apply -f ~/environment/eks-workshop/modules/networking/eks-hybrid-nodes/deployment.yaml
+```
+
+**배포 확인**
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+
+**애플리케이션 파드의 스케일 아웃**
+* nginx는 cpu 200m를 할당 받아야 하기에, 1개의 hybrid 노드에서는 약 8개의 파드까지 배포 가능
+* 8개 이상으로 스케일 아웃할 경우, `preferredDuringSchedulingIgnoredDuringExecution` 설정 때문에 기존 노드에도 파드가 배포될 수 있음
+
+```shell
+kubectl scale deployment nginx-deployment --replicas 15
+```
+
+**배포 상태 확인**
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+
+**스케일 인**
+```shell
+kubectl scale deployment nginx-deployment --replicas 3
+```
+```shell
+NAME                                NODE                                          ANNOTATIONS
+nginx-deployment-7474978d4f-46p94   ip-10-42-162-157.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-598ms   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-5tw4f   ip-10-42-136-177.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-986wq   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-brs6l   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-c69zr   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-dmb8k   ip-10-42-136-177.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-gbffc   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-gk5pq   ip-10-42-162-157.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-nrgrv   mi-05ebf6e3bf8f8d27f                          map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-q7bcx   ip-10-42-162-157.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-qrwpn   ip-10-42-114-231.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-vjl44   ip-10-42-114-231.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-zr6b6   ip-10-42-136-177.us-west-2.compute.internal   <none>
+nginx-deployment-7474978d4f-zs7zh   ip-10-42-114-231.us-west-2.compute.internal   <none>
+```
+
+**다시 확인**
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+```shell
+NAME                                NODE                   ANNOTATIONS
+nginx-deployment-7474978d4f-598ms   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-brs6l   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+nginx-deployment-7474978d4f-gbffc   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
+```
