@@ -410,8 +410,10 @@ nodeAffinity:
             values:
               - hybrid
 ```
-```yaml
 
+**Ingress 배포**  
+
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -449,7 +451,7 @@ nginx-787d665f9b-x882v   mi-0e9b2a38f2998f783
 
 **배포된 ALB 확인**
 ```shell
-export ADDRESS=$(kubectl get ingress -n nginx-remote nginx -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}") && echo $ADDRESS
+export ADDRESS=$(kubectl get ingress -n nginx-remote nginx -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}") && echo "http://${ADDRESS}"
 curl -s $ADDRESS
 ```
 
