@@ -490,3 +490,19 @@ spec:
   
   <img src="../../images/automode-15.png" />
   <img src="../../images/automode-16.png" />
+  
+  
+<div style="display: flex; justify-content: space-between; padding: 20px 0;">
+  <div>
+    <a href="../enable-automode/README.md">
+      ← Previous<br/>
+      <b>Enable Amazon EKS Auto Mode</b>
+    </a>
+  </div>
+  <div style="text-align: right">
+    <a href="../networking/README.md">
+      Next →<br/>
+      <b>Networking</b>
+    </a>
+  </div>
+</div>

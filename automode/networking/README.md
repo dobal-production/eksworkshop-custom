@@ -1,3 +1,5 @@
+# Exposing Application
+
 ## ALB용 IngressClass
 * `Ingress`는 서로 다른 컨트롤러로 구현될 수 있음. 
 * `IngressClass`에는 컨트롤러 이름과 추가 구성 포함.
@@ -17,35 +19,34 @@
 | `loadBalancerAttributes` | 로드 밸런서별 속성 | `idle_timeout.timeout_seconds: 60` |
 
 ### IngressClass, IngressClassParams 생성
-
-    ```shell
-    cat << EOF >~/environment/ingress.yaml
-    apiVersion: eks.amazonaws.com/v1
+```shell
+cat << EOF >~/environment/ingress.yaml
+apiVersion: eks.amazonaws.com/v1
+kind: IngressClassParams
+metadata:
+  name: eks-auto-alb
+spec:
+  scheme: internet-facing
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: eks-auto-alb
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: eks.amazonaws.com/alb
+  parameters:
+    apiGroup: eks.amazonaws.com
     kind: IngressClassParams
-    metadata:
-      name: eks-auto-alb
-    spec:
-      scheme: internet-facing
-    ---
-    apiVersion: networking.k8s.io/v1
-    kind: IngressClass
-    metadata:
-      name: eks-auto-alb
-      annotations:
-        ingressclass.kubernetes.io/is-default-class: "true"
-    spec:
-      controller: eks.amazonaws.com/alb
-      parameters:
-        apiGroup: eks.amazonaws.com
-        kind: IngressClassParams
-        name: eks-auto-alb
-    EOF
-    
-    kubectl apply -f ~/environment/ingress.yaml
-    ```
-    ```shell
-    kubectl get ingressclass,ingressclassparams
-    ```
+    name: eks-auto-alb
+EOF
+
+kubectl apply -f ~/environment/ingress.yaml
+```
+```shell
+kubectl get ingressclass,ingressclassparams
+```
 
 ### Retail Store UI 콤포넌트 재배포
 
@@ -259,3 +260,18 @@ echo "The catalog service is also available at: http://${NLB_URL}"
     echo "Testing /catalog endpoint accessing the catalog component..."
     curl -s "http://$SHARED_ALB_URL/catalogue" | jq
     ```
+    
+<div style="display: flex; justify-content: space-between; padding: 20px 0;">
+  <div>
+    <a href="../compute/README.md">
+      ← Previous<br/>
+      <b>Compute</b>
+    </a>
+  </div>
+  <div style="text-align: right">
+    <a href="../ebs/README.md">
+      Next →<br/>
+      <b>EBS Storage</b>
+    </a>
+  </div>
+</div>

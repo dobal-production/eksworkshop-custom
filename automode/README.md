@@ -43,3 +43,13 @@ kubectl config use-context arn:aws:eks:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster/d
 kubectl get pod --all-namespaces
 kubectl get nodes
 ```
+
+<div style="display: flex; justify-content: space-between; padding: 20px 0;">
+  
+  <div style="text-align: right">
+    <a href="./enable-automode/README.md">
+      Next →<br/>
+      <b>Enable Amazon EKS Auto Mode</b>
+    </a>
+  </div>
+</div>

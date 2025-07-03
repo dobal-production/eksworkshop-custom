@@ -203,3 +203,18 @@ retail-store-app-ui                  ClusterIP   10.100.26.36     <none>        
 kubectl port-forward $(kubectl get pods \
  --selector=app.kubernetes.io/name=ui -o jsonpath='{.items[0].metadata.name}') 8080:8080
 ```
+
+<div style="display: flex; justify-content: space-between; padding: 20px 0;">
+  <div>
+    <a href="../README.md">
+      ← Previous<br/>
+      <b>Getting Started</b>
+    </a>
+  </div>
+  <div style="text-align: right">
+    <a href="../compute/README.md">
+      Next →<br/>
+      <b>Compute</b>
+    </a>
+  </div>
+</div>

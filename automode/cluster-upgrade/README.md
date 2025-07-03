@@ -117,3 +117,18 @@
   ```shell
   kubectl get events | grep Drifted/Replace
   ```
+
+<div style="display: flex; justify-content: space-between; padding: 20px 0;">
+  <div>
+    <a href="../ebs/README.md">
+      ← Previous<br/>
+      <b>EBS Storage</b>
+    </a>
+  </div>
+  <div style="text-align: right">
+    <a href="../migration/README.md">
+      Next →<br/>
+      <b>Migrate an Amazon EKS Cluster to EKS Auto Mode</b>
+    </a>
+  </div>
+</div>
