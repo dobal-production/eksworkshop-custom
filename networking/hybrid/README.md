@@ -44,14 +44,16 @@
 
 > 본 워크샵에서는 Instance Profile을 만들지 않아 Hybrid 노드에 IAM Role이 적용되지 않는다.  
 > **Instance Profile 생성**
-> ```shell
-export INSTANCE_PROFILE=eks-workshop-hybrid-node-role-profile
-aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE
-aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE --role-name $HYBRID_ROLE_NAME
-aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE
-```
+> 
+  ```shell
+  export INSTANCE_PROFILE=eks-workshop-hybrid-node-role-profile
+  aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE
+  aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE --role-name $HYBRID_ROLE_NAME
+  aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE
+  ```
 
 ### SSM hybrid activation vs IAM Role Anywhere
+
 |      항목      | SSM hybrid activation | IAM Role Anywhere |
 |----------------|-----------------------|-------------------|
 | 사용 목적 | 온프레미스/엣지 디바이스를 AWS Systems Manager에 등록하여 관리형 인스턴스로 운영 | 온프레미스/외부 워크로드가 AWS 리소스에 접근할 때 X.509 인증서 기반의 임시 보안 인증 제공 |
