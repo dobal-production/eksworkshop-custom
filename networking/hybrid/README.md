@@ -44,14 +44,16 @@
 
 > 본 워크샵에서는 Instance Profile을 만들지 않아 Hybrid 노드에 IAM Role이 적용되지 않는다.  
 > **Instance Profile 생성**
-> ```shell
-export INSTANCE_PROFILE=eks-workshop-hybrid-node-role-profile
-aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE
-aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE --role-name $HYBRID_ROLE_NAME
-aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE
-```
+> 
+  ```shell
+  export INSTANCE_PROFILE=eks-workshop-hybrid-node-role-profile
+  aws iam create-instance-profile --instance-profile-name $INSTANCE_PROFILE
+  aws iam add-role-to-instance-profile --instance-profile-name $INSTANCE_PROFILE --role-name $HYBRID_ROLE_NAME
+  aws iam get-instance-profile --instance-profile-name $INSTANCE_PROFILE
+  ```
 
 ### SSM hybrid activation vs IAM Role Anywhere
+
 |      항목      | SSM hybrid activation | IAM Role Anywhere |
 |----------------|-----------------------|-------------------|
 | 사용 목적 | 온프레미스/엣지 디바이스를 AWS Systems Manager에 등록하여 관리형 인스턴스로 운영 | 온프레미스/외부 워크로드가 AWS 리소스에 접근할 때 X.509 인증서 기반의 임시 보안 인증 제공 |
@@ -255,7 +257,7 @@ mi-0e9b2a38f2998f783                          NotReady   <none>   19s   v1.31.7-
     * 유연성: 커널 업그레이드 없이 네트워킹 스택 기능 확장 가능
     * 성능: 전통적인 네트워킹 솔루션보다 높은 처리량과 낮은 지연 시간
 
-**cilium 애드온설치**
+**cilium 애드온설치** [[참고](https://docs.aws.amazon.com/eks/latest/userguide/hybrid-nodes-cni.html)]
 ```shell
 helm repo add cilium https://helm.cilium.io/
 ```
@@ -706,6 +708,8 @@ export ACTIVATION_JSON=$(aws ssm create-activation \
 --region $AWS_REGION)
 export ACTIVATION_ID=$(echo $ACTIVATION_JSON | jq -r ".ActivationId")
 export ACTIVATION_CODE=$(echo $ACTIVATION_JSON | jq -r ".ActivationCode")
+echo $ACTIVATION_ID
+echo $ACTIVATION_CODE
 ```
 ```shell
 cd ~/environment/
@@ -769,3 +773,76 @@ nginx-deployment-7474978d4f-kfr2j   mi-0194ba1068f1af7a8   map[controller.kubern
 nginx-deployment-7474978d4f-kmbjk   mi-05ebf6e3bf8f8d27f   map[controller.kubernetes.io/pod-deletion-cost:1]
 nginx-deployment-7474978d4f-m7kpc   mi-0194ba1068f1af7a8   map[controller.kubernetes.io/pod-deletion-cost:1]
 ```
+
+## Hybrid 노드 업그레이드 (In-place)
+* 사전 조건
+  * 노드의 k8s 버전은 Amazon EKS 컨트롤 플레인의 버전과 같거나 낮아야 함
+  * 컨트롤 플레인부터 업그레이드
+
+**앞선 예제 초기화**
+```shell
+kubectl scale deployment nginx-deployment --replicas 3
+```
+
+**노드 예약 불가 설정**
+* `kubectl cordon`은 새로운 파드가 더 이상 노드에 스케쥴링 되는 것을 방지
+* 노드를 `unschedulable` 상태로 변경
+* 이미 실행중인 파드에는 영향을 주지 않음
+* 데몬셋 파드는 영향을 받지 않음
+```shell
+kubectl cordon $NODE_NAME
+kubectl get nodes
+```
+```shell
+export NODE_NAME=mi-05ebf6e3bf8f8d27f
+```
+```shell
+NAME                                          STATUS                     ROLES    AGE     VERSION
+ip-10-42-116-248.us-west-2.compute.internal   Ready                      <none>   41m     v1.32.3-eks-473151a
+ip-10-42-135-28.us-west-2.compute.internal    Ready                      <none>   41m     v1.32.3-eks-473151a
+ip-10-42-185-191.us-west-2.compute.internal   Ready                      <none>   41m     v1.32.3-eks-473151a
+mi-0194ba1068f1af7a8                          Ready                      <none>   77m     v1.31.7-eks-473151a
+mi-05ebf6e3bf8f8d27f                          Ready,SchedulingDisabled   <none>   3h16m   v1.31.7-eks-473151a
+```
+
+**애플리케이션 스케일 아웃**
+```shell
+kubectl scale deployment nginx-deployment --replicas 9
+```
+```shell
+kubectl get pods  -o=custom-columns='NAME:.metadata.name,NODE:.spec.nodeName,ANNOTATIONS:.metadata.annotations'
+```
+```shell
+kubectl scale deployment nginx-deployment --replicas 3
+```
+
+**업그레이드를 위한 노드 드레이닝**
+* 노드에서 실행중인 모든 파드를 안전하게 제거하고, 다른 노드로 이동
+* 노드는 `unschedulable`상태로 변경
+* 데몬셋은 영향을 받지 않음
+* `--ignore-daemonsets`: DaemonSet 파드를 무시 (기본값).
+* `--delete-emptydir-data`: emptyDir 볼륨을 사용하는 파드 삭제 허용
+* `--force`: 관리되지 않는 파드 강제 삭제.
+
+```shell
+kubectl drain $NODE_NAME --ignore-daemonsets --delete-emptydir-data
+```
+
+**SSM hybrid activation**
+```shell
+export ACTIVATION_JSON=$(aws ssm create-activation \
+--default-instance-name hybrid-ssm-node \
+--iam-role $HYBRID_ROLE_NAME \
+--registration-limit 1 \
+--region $AWS_REGION)
+export ACTIVATION_ID=$(echo $ACTIVATION_JSON | jq -r ".ActivationId")
+export ACTIVATION_CODE=$(echo $ACTIVATION_JSON | jq -r ".ActivationCode")
+echo $ACTIVATION_ID
+echo $ACTIVATION_CODE
+```
+
+sudo ./nodeadm upgrade 1.32 -c file://nodeconfig.yaml
+
+https://repost.aws/articles/ARL44xuau6TG2t-JoJ3mJ5Mw/unpacking-the-cluster-networking-for-amazon-eks-hybrid-nodes
+https://medium.com/@stavocha/getting-hands-on-with-eks-hybrid-nodes-setup-challenges-and-insights-caf7c946a259
+

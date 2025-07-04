@@ -1,4 +1,4 @@
-# Overview
+# EBS Storage
 
 * `StorageClass` : EKS Auto Mode가 자동으로 Amazon EBS 볼륨을 프로비저닝하기 위한 구성 정의
 * 볼륨 유형, 암호화, KMS key, IOPS 등을 설정
@@ -298,3 +298,18 @@
     kubectl get pvc
     kubectl describe pvc data-retail-store-app-catalog-mysql-0
     ```
+
+<div style="display: flex; justify-content: space-between; padding: 20px 0;">
+  <div>
+    <a href="../networking/README.md">
+      ← Previous<br/>
+      <b>Networking</b>
+    </a>
+  </div>
+  <div style="text-align: right">
+    <a href="../cluster-upgrade/README.md">
+      Next →<br/>
+      <b>Cluster Upgrades</b>
+    </a>
+  </div>
+</div>
